@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<article xmlns="http://docbook.org/ns/docbook"
+	 xmlns:xl="http://www.w3.org/1999/xlink"
+	 version="5.0">
+  <title>Shared Expenses, a Prolog Solver</title>
+  <para>In a shared living situation, it can be hard to keep track of who owes money to whom. A major complicating factor is that one roommate may reimburse another for some expense, and that money has to be taken into account.</para>
+  
+  <para>I saw <link xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an article about this problem</link> a while back.</para>
+
+  <para>Let's examine a Prolog solution.</para>
+
+  <para>First, let's define some operators so we can make this into a <acronym>DSL</acronym> or domain-specific language.</para>
+
+  <programlisting role="source">
+    :- op(400, xfx, spent).
+    :- op(400, xfy, gave).
+    :- op(300, xfx, to).
+  </programlisting>
+
+  <para>By supplying these definitions, Prolog can now be used to represent the data directly:</para>
+
+  <programlisting>
+    ?- X = dexter spent 5300.
+    true.
+
+    ?- X = dexter gave 2000 to harry.
+    true.
+  </programlisting>
+
+  <para>Let's bring over the sample database so we can compare it's aesthetics:</para>
+
+  <programlisting>
+    dexter spent 5300.
+    angel spent 2700.
+    debra spent 800.
+    harry spent 1900.
+    debra spent 1700.
+    angel spent 2200.
+
+    dexter gave 2000 to harry.
+    angel gave 3200 to debra.
+  </programlisting>
+
+  <para>Building on this, let's figure out what everybody's personal expenditures are, not taking into account "gifts" just yet.</para>
+
+  <programlisting role="source">
+    total_spent(Person, Total) :-
+      bagof(Amount, Person spent Amount, Receipts),
+      sum(Receipts, Total).
+  </programlisting>
+
+  <para>Unfortunately, the predicate <code>total_spent/2</code> references <code>sum/2</code>, which isn't in the standard library, but should be. We can add our own implementation:</para>
+
+  <programlisting role="source">
+    sum(List, Total) :- sum(List, 0, Total).
+
+    sum([], Total, Total).
+    sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
+  </programlisting>
+
+  <para>We can now see that <code>total_spent/2<code> is going to generate all the people and the total they've spent:</para>
+
+  <screen>
+    ?- total_spent(Person, Total).
+    Person = angel,
+    Total = 4900 ;
+
+    Person = debra,
+    Total = 2500 ;
+
+    Person = dexter,
+    Total = 5300 ;
+
+    Person = harry,
+    Total = 1900.
+  </screen>
+
+  <para>We can calculate the total outlay on top of this or on top of the raw <code>spent</code> facts; either way, it doesn't affect the outcome.</para>
+
+  <programlisting>
+    total_outlay(Total) :-
+      findall(Amount, _ spent Amount, Expenditures),
+      sum(Expenditures, Total).
+  </programlisting>
+
+  <screen>
+    ?- total_outlay(X).
+    X = 14600.
+  </screen>
+
+  <para>We can calculate the per-person expected contribution by dividing the total outlay by the number of people:</para>
+
+  <programlisting>
+    expected_contribution(X) :-
+      total_outlay(Total),
+      setof(Person, A^(Person spent A), People),
+      length(People, RoommateCount),
+      X is Total / RoommateCount.
+  </programlisting>
+  
+</article>
