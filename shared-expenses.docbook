@@ -130,8 +130,8 @@
               [Donor spent DonorAfter, Recipient spent RecipientAfter | OldExpenditures1]) :-
       select(Donor spent DonorBefore, PreviousExpenditures, OldExpenditures0),
       select(Recipient spent RecipientBefore, OldExpenditures0, OldExpenditures1),
-      DonorAfter is DonorBefore - Amt,
-      RecipientAfter is RecipientBefore + Amt.
+      DonorAfter is DonorBefore + Amt,
+      RecipientAfter is RecipientBefore - Amt.
 
     balances([], []).
     balances([_ spent Baseline|Roommates], Debts) :-
