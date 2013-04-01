@@ -230,5 +230,18 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 </programlisting>
     </listitem>
   </orderedlist>
-    
+
+  <para>The first version of the code is now substantively complete. You can run it like so:</para>
+
+  <screen>?- reconcile(X), balances(X, Y), suggestions(Y, Z), write(Z), nl.
+[debra gives 3650 to dexter,debra gives 700 to angel,harry gives 3750 to angel]
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
+Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750],
+Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to angel] ;
+</screen>
+
+  <para>You'll notice now that there are several solutions. This is an automatic result of using Prolog to solve this problem.</para>
+
+  <para>You may download <link xl:href="shared-expenses.docbook">source code for this book</link> or <link xl:href="shared-expenses.pl">generated Prolog source code</link>.</para>
+
 </article>
