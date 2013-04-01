@@ -11,100 +11,83 @@
 
   <para>First, let's define some operators so we can make this into a <acronym>DSL</acronym> or domain-specific language.</para>
 
-  <programlisting role="source">
-    :- op(400, xfx, spent).
-    :- op(400, xfy, gave).
-    :- op(400, xfy, gives).
-    :- op(300, xfx, to).
-    :- op(400, xfx, owes).
-    :- op(400, xfx, is_owed).
-  </programlisting>
+  <programlisting role="source">:- op(400, xfx, spent).
+:- op(400, xfy, gave).
+:- op(300, xfx, to).
+</programlisting>
 
   <para>By supplying these definitions, Prolog can now be used to represent the data directly:</para>
 
-  <programlisting>
-    ?- X = dexter spent 5300.
-    true.
+  <programlisting>?- X = dexter spent 5300.
+true.
 
-    ?- X = dexter gave 2000 to harry.
-    true.
-  </programlisting>
+?- X = dexter gave 2000 to harry.
+true.</programlisting>
 
   <para>Let's bring over the sample database so we can compare it's aesthetics:</para>
 
-  <programlisting role="source">
-    dexter spent 5300.
-    angel spent 2700.
-    debra spent 800.
-    harry spent 1900.
-    debra spent 1700.
-    angel spent 2200.
+  <programlisting role="source">dexter spent 5300.
+angel spent 2700.
+debra spent 800.
+harry spent 1900.
+debra spent 1700.
+angel spent 2200.
 
-    dexter gave 2000 to harry.
-    angel gave 3200 to debra.
-  </programlisting>
+dexter gave 2000 to harry.
+angel gave 3200 to debra.
+</programlisting>
 
   <para>Building on this, let's figure out what everybody's personal expenditures are, not taking into account "gifts" just yet.</para>
 
-  <programlisting role="source">
-    total_spent(Person, Total) :-
-      bagof(Amount, Person spent Amount, Receipts),
-      sum(Receipts, Total).
-  </programlisting>
+  <programlisting role="source">total_spent(Person, Total) :-
+  bagof(Amount, Person spent Amount, Receipts),
+  sum(Receipts, Total).
+</programlisting>
 
   <para>Unfortunately, the predicate <code>total_spent/2</code> references <code>sum/2</code>, which isn't in the standard library, but should be. We can add our own implementation:</para>
 
-  <programlisting role="source">
-    sum(List, Total) :- sum(List, 0, Total).
+  <programlisting role="source">sum(List, Total) :- sum(List, 0, Total).
 
-    sum([], Total, Total).
-    sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
-  </programlisting>
+sum([], Total, Total).
+sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
+</programlisting>
 
   <para>We can now see that <code>total_spent/2</code> is going to generate all the people and the total they've spent:</para>
 
-  <screen>
-    ?- total_spent(Person, Total).
-    Person = angel,
-    Total = 4900 ;
+  <screen>?- total_spent(Person, Total).
+Person = angel,
+Total = 4900 ;
 
-    Person = debra,
-    Total = 2500 ;
+Person = debra,
+Total = 2500 ;
 
-    Person = dexter,
-    Total = 5300 ;
+Person = dexter,
+Total = 5300 ;
 
-    Person = harry,
-    Total = 1900.
-  </screen>
+Person = harry,
+Total = 1900.</screen>
 
   <para>We can calculate the total outlay on top of this or on top of the raw <code>spent</code> facts; either way, it doesn't affect the outcome.</para>
 
-  <programlisting role="source">
-    total_outlay(Total) :-
-      findall(Amount, _ spent Amount, Expenditures),
-      sum(Expenditures, Total).
-  </programlisting>
+  <programlisting role="source">total_outlay(Total) :-
+  findall(Amount, _ spent Amount, Expenditures),
+  sum(Expenditures, Total).
+</programlisting>
 
-  <screen>
-    ?- total_outlay(X).
-    X = 14600.
-  </screen>
+  <screen>?- total_outlay(X).
+X = 14600.</screen>
 
   <para>We can calculate the per-person expected contribution by dividing the total outlay by the number of people:</para>
 
-  <programlisting role="source">
-    expected_contribution(X) :-
-      total_outlay(Total),
-      setof(Person, A^(Person spent A), People),
-      length(People, RoommateCount),
-      X is Total / RoommateCount.
-  </programlisting>
+  <programlisting role="source">expected_contribution(X) :-
+  total_outlay(Total),
+  setof(Person, A^(Person spent A), People),
+  length(People, RoommateCount),
+  X is Total / RoommateCount.
+</programlisting>
 
-  <screen>
-    ?- expected_contribution(X).
-    X = 3650.
-  </screen>
+  <screen>?- expected_contribution(X).
+X = 3650.</screen>
 
   <para>So, we've already calculated what everybody should have contributed and what everybody has already spent. Now we simply need to account for individual donations and then we can output who should pay what to whom.</para>
 
@@ -116,118 +99,136 @@
 
   <para>First, let's say we're going to gather up all the expenditures and all the donations and then just forward them on to some other predicate that will reconcile them into a coherent list of what each person has paid.</para>
 
-  <programlisting role="source">
-    reconcile(Reconciliation) :-
-      findall(X spent Amt, total_spent(X, Amt), Expenditures),
-      findall(X gave Y to Z, X gave Y to Z, Donations),
-      reconcile_all(Donations, Expenditures, Reconciliation).
-  </programlisting>
+  <programlisting role="source">reconcile(Reconciliation) :-
+  findall(X spent Amt, total_spent(X, Amt), Expenditures),
+  findall(X gave Y to Z, X gave Y to Z, Donations),
+  reconcile_all(Donations, Expenditures, Reconciliation).
+</programlisting>
 
   <para>Let's jump to the interesting part and handle what to do with a single donation. Intuitively, what we want to do is get the donation. Whoever did the giving, this decreases their debt, and whoever did the receiving, this increases theirs by the same amount.</para>  
 
-  <programlisting role="source">
-    reconcile(Donor gave Amt to Recipient,
-              PreviousExpenditures,
-              [Donor spent DonorAfter, Recipient spent RecipientAfter | WithoutEither]) :-
-      select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
-      select(Recipient spent RecipientBefore, WithoutDonor, WithoutEither),
-      DonorAfter is DonorBefore + Amt,
-      RecipientAfter is RecipientBefore - Amt.
-  </programlisting>
+  <programlisting role="source">reconcile(Donor gave Amt to Recipient,
+          PreviousExpenditures,
+          [Donor spent DonorAfter, Recipient spent RecipientAfter | WithoutEither]) :-
+  select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
+  select(Recipient spent RecipientBefore, WithoutDonor, WithoutEither),
+  DonorAfter is DonorBefore + Amt,
+  RecipientAfter is RecipientBefore - Amt.
+</programlisting>
 
-  <para>The only thing that makes this confusing is our use of <code>select/3<code>. I mentioned briefly that we would run into a situation using this approach where we needed to use a list as a map. What <code>select/3<code> does is remove an item from a list and give you back the list without that item. So in the preceding code, we used <code>select/3</code> twice, once to remove the donor and once to remove the recipient. By using a chain from <code>PreviousExpenditures</code> through <code>WithoutDonor</code> to <code>WithoutEither</code>, we've threaded the state of the map through this rule. And then, like many Prolog rules, the work done in the body is synthesized into an out param; we prepend the new Donor and Recipient values onto the <code>WithoutEither</code> list, effectively updating the values for </code>Donor</code> and </code>Recipient</code> in the state variable.</para>
+  <para>The only thing that makes this confusing is our use of <code>select/3</code>. I mentioned briefly that we would run into a situation using this approach where we needed to use a list as a map. What <code>select/3</code> does is remove an item from a list and give you back the list without that item. So in the preceding code, we used <code>select/3</code> twice, once to remove the donor and once to remove the recipient. By using a chain from <code>PreviousExpenditures</code> through <code>WithoutDonor</code> to <code>WithoutEither</code>, we've threaded the state of the map through this rule. And then, like many Prolog rules, the work done in the body is synthesized into an out param; we prepend the new Donor and Recipient values onto the <code>WithoutEither</code> list, effectively updating the values for <code>Donor</code> and <code>Recipient</code> in the state variable.</para>
 
-  <para>This now looks like a perfect candidate for a fold, so let's go ahead and import the <code>apply<code> library for SWI-Prolog and use <code>foldl/4</code> to build </code>reconcile_all/3</code>:</para>
+  <para>This now looks like a perfect candidate for a fold, so let's go ahead and import the <code>apply</code> library for SWI-Prolog and use <code>foldl/4</code> to build <code>reconcile_all/3</code>:</para>
 
-  <programlisting role="source">
-    reconcile_all(Donations, Expenditures, Reconciliation) :-
-      foldl(reconcile, Donations, Expenditures, Reconciliation).
-  </programlisting>
+  <programlisting role="source">reconcile_all(Donations, Expenditures, Reconciliation) :-
+  foldl(reconcile, Donations, Expenditures, Reconciliation).
+</programlisting>
 
   <para>If we run what we have so far, we'll get exactly where everybody stands in terms of what they've spent:</para>
 
-  <screen>
-    ?- reconcile(X).
-    X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100] .
-  </screen>
+  <screen>?- reconcile(X).
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</screen>
 
-  <para>There are two problems with these numbers. First, they do not yet include expected contributions, and two, some are negative. But, using this and the expected contribution from above, we can convert this into a list of who owes and who is owed. I call this <code>balances/2</code>. To do this, we have to consider three cases.</para>
+  <para>There are two problems with these numbers. First, they do not yet include expected contributions, and two, some are negative. But, using this and the expected contribution from above, we can convert this into a list of who owes and who is owed. I call this <code>balances/2</code>. To make this attractive, let's add some additional operators:</para>
+
+<programlisting role="source">:- op(400, xfx, owes).
+:- op(400, xfx, is_owed).
+:- op(400, xfy, gives).
+</programlisting>
+  
+  <para>To do this, we have to consider three cases.</para>
 
   <orderedlist>
     <listitem>
       <para>In the case where the person spent more than the expected contribution, that roommate is owed the difference.</para>
     
-      <programlisting role="source">
-        balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
-          expected_contribution(Baseline),
-          Expenditure > Baseline,
-          Amount is Expenditure - Baseline,
-          balances(Roommates, Debts).
-      </programlisting>
+      <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
+  expected_contribution(Baseline),
+  Expenditure > Baseline,
+  Amount is Expenditure - Baseline,
+  balances(Roommates, Debts).
+</programlisting>
     </listitem>
 
     <listitem>
       <para>In the case where the person spent less than the expected contribution, they owe the difference:</para>
 
-      <programlisting role="source">
-        balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
-          expected_contribution(Baseline),
-          Baseline > Expenditure,
-          Amount is Baseline - Expenditure,
-          balances(Roommates, Debts).      
-      </programlisting>
+      <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
+  expected_contribution(Baseline),
+  Baseline > Expenditure,
+  Amount is Baseline - Expenditure,
+  balances(Roommates, Debts).
+</programlisting>
     </listitem>
 
     <listitem>
       <para>In the case where the person spent exactly the expected contribution, they can be omitted from further discussion; they are "square" as it were. This one detail prevents us from using a <code>maplist/3</code> to deal with this, though we could conceivably use <code>foldl/4</code>.</para>
 
-      <programlisting role="source">
-        balances([_ spent Baseline|Roommates], Debts) :-
-          expected_contribution(Baseline),
-          balances(Roommates, Debts).
-      </programlisting>
+      <programlisting role="source">balances([_ spent Baseline|Roommates], Debts) :-
+  expected_contribution(Baseline),
+  balances(Roommates, Debts).
+</programlisting>
     </listitem>
 
     <listitem>
       <para>And of course we need a base case for our recursion, the case where we're out of people to consider.</para>
 
-      <programlisting role="source">
-        balances([], []).
-      </programlisting>
+      <programlisting role="source">balances([], []).
+</programlisting>
     </listitem>
   </orderedlist>
 
   <para>At this point, we can now take a look at what the final balances are:</para>
 
-  <screen>
-    ?- reconcile(X), balances(X, Y).
-    X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
-    Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
-  </screen>
+  <screen>?- reconcile(X), balances(X, Y).
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
+Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].</screen>
 
-  <para>This looks pretty good so far.</para>
+  <para>This looks pretty good so far. Let's figure out the suggestions for complete reconciliation.</para>
 
-  <programlisting role="source">
-    suggestions([], []).
-    suggestions(Situation, [Donor gives Amount to Recipient|Suggestions]) :-
-      select(Donor owes Amount, Situation, OldSituation0),
-      select(Recipient is_owed Amount, OldSituation0, OldSituation1),
-      write(Donor gives Amount to Recipient), nl,
-      suggestions(OldSituation1, Suggestions).
-    suggestions(Situation, [Donor gives Credit to Recipient|Suggestions]) :-
-      select(Donor owes Debt, Situation, OldSituation0),
-      select(Recipient is_owed Credit, OldSituation0, OldSituation1),
-      Debt > Credit,
-      NewDebt is Debt - Credit,
-      write(Donor gives Credit to Recipient), nl,
-      suggestions([Donor owes NewDebt|OldSituation1], Suggestions).
-    suggestions(Situation, [Donor gives Debt to Recipient|Suggestions]) :-
-      select(Donor owes Debt, Situation, OldSituation0),
-      select(Recipient is_owed Credit, OldSituation0, OldSituation1),
-      Credit > Debt,
-      NewCredit is Credit - Debt,
-      write(Donor gives Debt to Recipient), nl,
-      suggestions([Recipient is_owed NewCredit|OldSituation1], Suggestions).
-  </programlisting>
+  <orderedlist>
+    <listitem>
+      <para>First we have the base case: when there are no discrepancies, no further suggestions are required.</para>
+      <programlisting role="source">suggestions([], []).
+</programlisting>
+    </listitem>
+
+    <listitem>
+      <para>The next case is a special one, where one person owes exactly what another person is owed. In that case, we generate the expected suggestion and then recur, having dealt with both roommates.</para>
+      
+    <programlisting role="source">suggestions(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
+  select(Debtor owes Amount, Situation, WithoutDebtor),
+  select(Creditor is_owed Amount, WithoutDebtor, WithoutCreditor),
+  suggestions(WithoutCreditor, Suggestions).
+</programlisting>
+    </listitem>
+
+    <listitem>
+      <para>
+	This case and the following have a similar structure. In both cases, we peel off somebody who owes and somebody who is owed money. Then we examine the debt and the credit and see which is greater. If the debt is greater, the credit will be cleared but the some part of the debt will remain, so the creditor will be removed from the situation list but the debtor will be reinserted with a wly reduced debt.
+      </para>
+      
+    <programlisting role="source">suggestions(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
+  select(Debtor owes Debt, Situation, WithoutDebtor),
+  select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+  Debt > Credit,
+  NewDebt is Debt - Credit,
+  suggestions([Debtor owes NewDebt|WithoutCreditor], Suggestions).
+</programlisting>
+    </listitem>
+
+    <listitem>
+      <para>
+	This is the opposite case, where the credit is greater, so the debt is cleared while some part of the credit remains.
+      </para>
+    <programlisting role="source">suggestions(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
+  select(Debtor owes Debt, Situation, WithoutDebtor),
+  select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+  Credit > Debt,
+  NewCredit is Credit - Debt,
+  suggestions([Creditor is_owed NewCredit|WithoutCreditor], Suggestions).
+</programlisting>
+    </listitem>
+  </orderedlist>
     
 </article>
