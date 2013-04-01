@@ -20,4 +20,5 @@ all: shared-expenses.html shared-expenses.pl shared-expenses.pdf
 
 .PHONY: clean
 clean:
-	rm -f *.html *.pl
+	rm -f shared-expenses.html shared-expenses.pdf shared-expenses.pl
+

@@ -523,7 +523,9 @@ is_char(0'_).
 
   <para>
     You may download <link xl:href="shared-expenses.docbook">source
-    code for this article</link> or <link
-    xl:href="shared-expenses.pl">generated Prolog source code</link>.
+    code for this article</link>
+    or <link xl:href="shared-expenses.pl">generated Prolog source
+    code</link>. There is also <link xl:href="shared-expenses.pdf">a
+    hardly-customized PDF version</link>.
   </para>
 </article>

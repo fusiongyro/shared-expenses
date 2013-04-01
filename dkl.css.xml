@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <style>
-body { margin: 0in auto; width: 7.5in; }
+@import url(http://fonts.googleapis.com/css?family=Ubuntu:300&amp;subset=latin,latin-ext);
+body { margin: 0in auto; width: 7.5in; font-family: georgia, serif; }
+div.programlisting, div.screen { font-family: 'Ubuntu', monospace; margin: 1em; padding: 1em; }
+.programlisting { background: #dff; }
+.screen { background: #ffd; }
 </style>
