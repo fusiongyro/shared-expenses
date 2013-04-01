@@ -543,18 +543,67 @@ Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to a
     </para>
   </sidebar>
 
-  <programlisting role="source"><![CDATA[
-:- use_module(library(dcg/basics)).
+  <para>
+    Whenever input is involved in Prolog, it's tempting to use a
+    <emphasis>definite clause grammar</emphasis> or
+    <acronym>DCG</acronym>. In this particular case it almost isn't
+    worth it, because the Prolog code is so close to what one would
+    want for an input format it's pretty meaningless to improve on
+    it. But let's anyway, for the thrill of it. We'll start by
+    including the <code>dcg/basics</code> library.
+  </para>
+  <programlisting role="source">:- use_module(library(dcg/basics)).
+</programlisting>
 
-document([]).
+  <para>
+    We're going to define a document as one or more entries, where
+    each entry will be so-and-so spent some-such or so-and-so gave
+    some-such to so-and-so. In other words, we'll have a production
+    for spending and a production for giving.
+  </para>
+
+  <programlisting role="source"><![CDATA[document([]) --> [].
 document([Entry|Entries]) --> entry(Entry), nl, document(Entries).
 
 entry(Entry) --> spent(Entry) ; gave(Entry).
+]]></programlisting>
 
-spent(Person spent Amount) --> word(Person), whites, "spent", whites, number(Amount).
-gave(Donor gave Amount to Recipient) --> word(Donor), whites, "gave", whites, number(Amount), whites, "to", whites, word(Recipient).
-gave(Donor gave Amount to Recipient) --> word(Donor), whites, "gave", whites, word(Recipient), whites, number(Amount).
+  <para>
+    Now, spending is pretty straightforward; we'll just match lines
+    that look like <code>Sally spent 1000</code>. We won't be
+    expecting a period, just a newline. And we can swallow a dollar
+    sign, should there happen to be one.
+  </para>
+  
+  <programlisting role="source"><![CDATA[
+spent(Person spent Amount) --> word(Person), whites, "spent", whites, currency(Amount).
+]]></programlisting>
+
+  <para>
+    Giving isn't too bad either, but since we have this opportunity,
+    let's handle both <quote>Sally gave 1000 to Jim</quote> and
+    <quote>Sally gave Jim 100.</quote>
+  </para>
+    
+  <programlisting role="source"><![CDATA[
+gave(Donor gave Amount to Recipient) --> 
+  word(Donor), whites, 
+  "gave", whites, 
+  currency(Amount), whites, 
+  "to", whites, 
+  word(Recipient).
+gave(Donor gave Amount to Recipient) --> 
+  word(Donor), whites, 
+  "gave", whites, 
+  word(Recipient), whites, 
+  currency(Amount).
+]]></programlisting>
+
+  <programlisting role="source"><![CDATA[
 nl --> "\n".
+
+currency(Amount) --> "$", number(Amount).
+currency(Amount) --> number(Amount).
 
 word(WORD) --> { var(WORD), ! },
    chars(CHARS), { atom_codes(WORD, CHARS) }.
