@@ -12,9 +12,12 @@
   </para>
   
   <para>
-    I saw <link
-    xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
-    article about this problem</link> a while back. The novelty of this solution is that rather than everybody throwing their money into a single big pot, the roommates who have debt pay the roommates with credit. Let's do a simple example.
+    I
+    saw <link xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
+    article about this problem</link> a while back. The novelty of
+    this solution is that rather than everybody throwing their money
+    into a single big pot, the roommates who have debt pay the
+    roommates with credit. Let's do a simple example.
   </para>
 
   <para>
@@ -65,11 +68,11 @@ true.</programlisting>
     to this information. It's no different from saying
     <code>spent(dexter, 5300)</code> or <code>gave(dexter, to(2000,
     harry))</code>. The second example there looks a little bad, but
-    since we're only ever going to use the "transitive" version, and
-    we'll be pattern matching with it, it really doesn't matter which
-    values are in which positions in the real intermediate
-    representation. We're concerned about aesthetics. In fact, let's
-    bring over the sample database so we can see them:
+    since we're only ever going to use the <quote>transitive</quote>
+    version, and we'll be pattern matching with it, it really doesn't
+    matter which values are in which positions in the real
+    intermediate representation. We're concerned about aesthetics. In
+    fact, let's bring over the sample database so we can see them:
   </para>
 
   <programlisting role="source">dexter spent 5300.
@@ -88,8 +91,8 @@ angel gave 3200 to debra.
     conveying the same information from within the syntactic
     constraints of the language. Let's build on this, let's figure out
     what everybody's personal expenditures are, not taking into
-    account "gifts" just yet. The idea here is to sum up the amount
-    spent per person.
+    account <quote>gifts</quote> just yet. The idea here is to sum up
+    the amount spent per person.
   </para>
 
   <programlisting role="source">total_spent(Person, Total) :-
@@ -125,13 +128,13 @@ Total = 1900.</screen>
 
   <para>
     What separates Prolog from other programming languages is that
-    predicates can be "driven" in different ways. Different arguments
-    can serve as input or output depending on the circumstances. The
-    above predicate is written generally enough that it can actually
-    generate the people as well as their totals. It's desirable that
-    predicates have this universality as much as possible. The more
-    ways the predicate can be called, the freer we are in applying
-    Prolog's power to our problem.
+    predicates can be <quote>driven</quote> in different
+    ways. Different arguments can serve as input or output depending
+    on the circumstances. The above predicate is written generally
+    enough that it can actually generate the people as well as their
+    totals. It's desirable that predicates have this universality as
+    much as possible. The more ways the predicate can be called, the
+    freer we are in applying Prolog's power to our problem.
   </para>
 
   <para>
@@ -176,7 +179,8 @@ X = 14600.</screen>
     either of these cases, a simple solution is to mandate that the
     user say, for instance, <code>fluffy spent 0.</code>, but a more
     robust solution would be to either require a list of roommates or
-    make a new predicate to capture "roommateness". Let's try that.
+    make a new predicate to capture <quote>roommateness.</quote> Let's
+    try that.
   </para>
 
   <programlisting role="source">roommate(Roomie) :- Roomie spent _.
@@ -355,9 +359,9 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
       <para>
         In the case where the person spent exactly the expected
         contribution, they can be omitted from further discussion;
-        they are "square" as it were. This one detail prevents us from
-        using a <code>maplist/3</code> to deal with this, though we
-        could conceivably use <code>foldl/4</code>.
+        they are <quote>square</quote> as it were. This one detail
+        prevents us from using a <code>maplist/3</code> to deal with
+        this, though we could conceivably use <code>foldl/4</code>.
       </para>
 
       <programlisting role="source">balances([_ spent Baseline|Roommates], Debts) :-
