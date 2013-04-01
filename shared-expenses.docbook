@@ -3,20 +3,56 @@
 	 xmlns:xl="http://www.w3.org/1999/xlink"
 	 version="5.0">
   <title>Shared Expenses, a Prolog Solver</title>
-  <para>In a shared living situation, it can be hard to keep track of who owes money to whom. A major complicating factor is that one roommate may reimburse another for some expense, and that money has to be taken into account.</para>
+
+  <para>
+    In a shared living situation, it can be hard to keep track of
+    living expenses. A major complicating factor is that one roommate
+    may reimburse another for some expense, and that money has to be
+    taken into account.
+  </para>
   
-  <para>I saw <link xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an article about this problem</link> a while back.</para>
+  <para>
+    I saw <link
+    xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
+    article about this problem</link> a while back. The novelty of this solution is that rather than everybody throwing their money into a single big pot, the roommates who have debt pay the roommates with credit. Let's do a simple example.
+  </para>
+
+  <para>
+    Take the simplest interesting case. There are two roommates, Alice
+    and Bob. They each spend $500 on rent. Alice then pays the
+    electric bill for $200. The total outlay for this month is $1000 +
+    $200 = $1200. Alice has spent $700, Bob has spent $500. To make it
+    fair, Bob has to pay Alice $100. After that transaction, Alice's
+    outlay is $600 and Bob's is $600, and everything is fair.
+  </para>
+
+  <para>
+    This example suggests a procedure. We calculate the total amount
+    everybody spent, then the expected contribution, then the
+    difference for each roommate from the amount they spent and their
+    expected contribution. The reconciliation process is simply
+    matching up creditors with debtors. One senses that this process
+    is probably fixed-point (assuming we can take arbitrary fractions
+    of a dollar) since every credit must be matched by an equal amount
+    of debt somewhere else.
+  </para>
 
   <para>Let's examine a Prolog solution.</para>
 
-  <para>First, let's define some operators so we can make this into a <acronym>DSL</acronym> or domain-specific language.</para>
+  <para>
+    As a firs step, let's define some operators so we can make this
+    into a <acronym>DSL</acronym> or domain-specific language
+  </para>
 
   <programlisting role="source">:- op(400, xfx, spent).
 :- op(400, xfy, gave).
 :- op(300, xfx, to).
 </programlisting>
 
-  <para>By supplying these definitions, Prolog can now be used to represent the data directly:</para>
+  <para>
+    By supplying these definitions, Prolog can now be used to
+    represent the data directly:
+</para>
 
   <programlisting>?- X = dexter spent 5300.
 true.
@@ -24,7 +60,17 @@ true.
 ?- X = dexter gave 2000 to harry.
 true.</programlisting>
 
-  <para>Let's bring over the sample database so we can compare it's aesthetics:</para>
+  <para>
+    Note that Prolog isn't assigning any <emphasis>meaning</emphasis>
+    to this information. It's no different from saying
+    <code>spent(dexter, 5300)</code> or <code>gave(dexter, to(2000,
+    harry))</code>. The second example there looks a little bad, but
+    since we're only ever going to use the "transitive" version, and
+    we'll be pattern matching with it, it really doesn't matter which
+    values are in which positions in the real intermediate
+    representation. We're concerned about aesthetics. In fact, let's
+    bring over the sample database so we can see them:
+  </para>
 
   <programlisting role="source">dexter spent 5300.
 angel spent 2700.
@@ -37,14 +83,21 @@ dexter gave 2000 to harry.
 angel gave 3200 to debra.
 </programlisting>
 
-  <para>Building on this, let's figure out what everybody's personal expenditures are, not taking into account "gifts" just yet.</para>
+  <para>
+    This is somewhat more attractive than the Haskell version, despite
+    conveying the same information from within the syntactic
+    constraints of the language. Let's build on this, let's figure out
+    what everybody's personal expenditures are, not taking into
+    account "gifts" just yet. The idea here is to sum up the amount
+    spent per person.
+  </para>
 
   <programlisting role="source">total_spent(Person, Total) :-
   bagof(Amount, Person spent Amount, Receipts),
   sum(Receipts, Total).
 </programlisting>
 
-  <para>Unfortunately, the predicate <code>total_spent/2</code> references <code>sum/2</code>, which isn't in the standard library, but should be. We can add our own implementation:</para>
+  <para>Unfortunately, the predicate <function>total_spent/2</function> references <function>sum/2</function>>, which isn't in the standard library, but should be. We can add our own implementation:</para>
 
   <programlisting role="source">sum(List, Total) :- sum(List, 0, Total).
 
@@ -52,7 +105,10 @@ sum([], Total, Total).
 sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
 </programlisting>
 
-  <para>We can now see that <code>total_spent/2</code> is going to generate all the people and the total they've spent:</para>
+  <para>
+    We can now see that <function>total_spent/2</function> is going to
+    generate all the people and the total they've spent:
+  </para>
 
   <screen>?- total_spent(Person, Total).
 Person = angel,
@@ -67,7 +123,23 @@ Total = 5300 ;
 Person = harry,
 Total = 1900.</screen>
 
-  <para>We can calculate the total outlay on top of this or on top of the raw <code>spent</code> facts; either way, it doesn't affect the outcome.</para>
+  <para>
+    What separates Prolog from other programming languages is that
+    predicates can be "driven" in different ways. Different arguments
+    can serve as input or output depending on the circumstances. The
+    above predicate is written generally enough that it can actually
+    generate the people as well as their totals. It's desirable that
+    predicates have this universality as much as possible. The more
+    ways the predicate can be called, the freer we are in applying
+    Prolog's power to our problem.
+  </para>
+
+  <para>
+    We can now calculate the total outlay on top of
+    <function>total_spent/2</function> or on top of the raw
+    <function>spent/2</function>> facts; either way, it doesn't affect the
+    outcome, just the amount of work that goes into producing it.
+  </para>
 
   <programlisting role="source">total_outlay(Total) :-
   findall(Amount, _ spent Amount, Expenditures),
@@ -77,11 +149,42 @@ Total = 1900.</screen>
   <screen>?- total_outlay(X).
 X = 14600.</screen>
 
-  <para>We can calculate the per-person expected contribution by dividing the total outlay by the number of people:</para>
+  <para>
+    We can now calculate the per-person expected contribution by
+    dividing the total outlay by the number of people:
+  </para>
 
-  <programlisting role="source">expected_contribution(X) :-
+  <programlisting>expected_contribution(X) :-
   total_outlay(Total),
   setof(Person, A^(Person spent A), People),
+  length(People, RoommateCount),
+  X is Total / RoommateCount.
+</programlisting>
+
+  <para>
+    I find it desirable for Prolog to suggest a natural English
+    reading. Sometimes the logical reading doesn't match particularly
+    closely, because the natural language is insufficiently
+    precise. The first line and the last two lines are quite sensible
+    here. The second line, however, is a little more complex. I'm
+    using the expenditures in the database to furnish me with a list
+    of roommates. This isn't especially robust, since we could have a
+    roommate that only gifts other roommates and doesn't actually
+    spend anything himself (I think we've all met the type). We could
+    even have unpaying roommates, like Fluffy, and we might want to
+    calculate her share as a punitive measure against her owner. In
+    either of these cases, a simple solution is to mandate that the
+    user say, for instance, <code>fluffy spent 0.</code>, but a more
+    robust solution would be to either require a list of roommates or
+    make a new predicate to capture "roommateness". Let's try that.
+  </para>
+
+  <programlisting role="source">roommate(Roomie) :- Roomie spent _.
+roommate(Roomie) :- Roomie gave _ to _.
+
+expected_contribution(X) :-
+  total_outlay(Total),
+  setof(Person, roommate(Person), People),
   length(People, RoommateCount),
   X is Total / RoommateCount.
 </programlisting>
@@ -89,15 +192,49 @@ X = 14600.</screen>
   <screen>?- expected_contribution(X).
 X = 3650.</screen>
 
-  <para>So, we've already calculated what everybody should have contributed and what everybody has already spent. Now we simply need to account for individual donations and then we can output who should pay what to whom.</para>
+  <para>
+    So, we've already calculated what everybody should have
+    contributed and what everybody has already spent. Now we simply
+    need to account for individual donations and then we can output
+    who should pay what to whom.
+  </para>
 
-  <para>There are two ways forward from here. Let's examine them both. The first one is to use the database to store what we calculate. We could <code>asserta(owes(Person, ExpectedContribution))</code> and then have one process to update that value, first with what they've spent, then with the result of applying their donations. A part of me balks at this because it means storing intermediate results in the fact database, which is not susceptible to backtracking and can therefore introduce errors in a way that our raw data cannot.</para>
+  <para>
+    There are two ways forward from here. Let's examine them both. The
+    first one is to use the database to store what we calculate. We
+    could <code>asserta(owes(Person, ExpectedContribution))</code> and
+    then have one process to update that value, first with what
+    they've spent, then with the result of applying their donations. A
+    part of me balks at this because it means storing intermediate
+    results in the fact database, which is not susceptible to
+    backtracking and can therefore introduce errors in a way that our
+    raw data cannot. But this is standard operating procedure in a
+    forward-chaining reasoner like CLIPS. We'll examine this approach
+    last.
+  </para>
 
-  <para>Another approach would be to have a resolution process that pulls all the relevant data from the database and passes it along in lists recursively until all the outstanding transactions have been handled, and then forwards its final state to a process that displays the outcome. This strikes me as a cleaner approach, even though it necessitates using a list as a map (since Prolog doesn't really have a map datastructure).</para>
+  <para>
+    A more classically Prolog approach would be to have a resolution
+    process that pulls all the relevant data from the database and
+    passes it along in lists recursively until all the outstanding
+    transactions have been handled, and then forwards its final state
+    to a process that displays the outcome. This strikes me as a
+    cleaner approach, even though it necessitates using a list as a
+    map (since Prolog doesn't really have a map datastructure). We'll
+    gloss over this inefficiency for now.
+  </para>
 
-  <para>Odds are good if you're new to Prolog and come from a procedural background, the first solution will sound better to you. If you come from a functional background the second solution will probably sound better to you. Let's make them both and see which one is nicer.</para>
+  <para>
+    Odds are good if you're new to Prolog and come from a procedural
+    background, the first solution will sound better to you. If you
+    come from a functional background the second solution will
+    probably sound better to you. It will be interesting to know which
+    one you like better after you see them both.
+  </para>
 
-  <para>First, let's say we're going to gather up all the expenditures and all the donations and then just forward them on to some other predicate that will reconcile them into a coherent list of what each person has paid.</para>
+  <para>
+    First, let's say we're going to gather up all the expenditures and all the donations and then just forward them on to some other predicate that will reconcile them into a coherent list of what each person has paid.
+  </para>
 
   <programlisting role="source">reconcile(Reconciliation) :-
   findall(X spent Amt, total_spent(X, Amt), Expenditures),
@@ -105,7 +242,13 @@ X = 3650.</screen>
   reconcile_all(Donations, Expenditures, Reconciliation).
 </programlisting>
 
-  <para>Let's jump to the interesting part and handle what to do with a single donation. Intuitively, what we want to do is get the donation. Whoever did the giving, this decreases their debt, and whoever did the receiving, this increases theirs by the same amount.</para>  
+  <para>
+    Let's jump to the interesting part and handle what to do with a
+    single donation. Intuitively, what we want to do is get the
+    donation. Whoever did the giving, this decreases their debt, and
+    whoever did the receiving, this increases theirs by the same
+    amount.
+  </para>
 
   <programlisting role="source">reconcile(Donor gave Amt to Recipient,
           PreviousExpenditures,
@@ -116,31 +259,75 @@ X = 3650.</screen>
   RecipientAfter is RecipientBefore - Amt.
 </programlisting>
 
-  <para>The only thing that makes this confusing is our use of <code>select/3</code>. I mentioned briefly that we would run into a situation using this approach where we needed to use a list as a map. What <code>select/3</code> does is remove an item from a list and give you back the list without that item. So in the preceding code, we used <code>select/3</code> twice, once to remove the donor and once to remove the recipient. By using a chain from <code>PreviousExpenditures</code> through <code>WithoutDonor</code> to <code>WithoutEither</code>, we've threaded the state of the map through this rule. And then, like many Prolog rules, the work done in the body is synthesized into an out param; we prepend the new Donor and Recipient values onto the <code>WithoutEither</code> list, effectively updating the values for <code>Donor</code> and <code>Recipient</code> in the state variable.</para>
+  <para>
+    The only thing that makes this confusing is our use of
+    <function>select/3</function>. I mentioned briefly that we would
+    run into a situation using this approach where we needed to use a
+    list as a map. What <function>select/3</function>> does is remove
+    an item from a list and give you back the list without that
+    item. So in the preceding code, we used
+    <function>select/3</function>> twice, once to remove the donor and
+    once to remove the recipient. By using a chain from
+    <code>PreviousExpenditures</code> through
+    <code>WithoutDonor</code> to <code>WithoutEither</code>, we've
+    threaded the state of the map through this rule. And then, like
+    many Prolog rules, the work done in the body is synthesized into
+    an out param; we prepend the new Donor and Recipient values onto
+    the <code>WithoutEither</code> list, effectively updating the
+    values for <code>Donor</code> and <code>Recipient</code> in the
+    state variable.
+  </para>
 
-  <para>This now looks like a perfect candidate for a fold, so let's go ahead and import the <code>apply</code> library for SWI-Prolog and use <code>foldl/4</code> to build <code>reconcile_all/3</code>:</para>
+  <para>
+    This now looks like a perfect candidate for a fold, so let's go
+    ahead and import the <code>apply</code> library for SWI-Prolog and
+    use <function>foldl/4</function> to build
+    <function>reconcile_all/3</function>:
+  </para>
 
   <programlisting role="source">reconcile_all(Donations, Expenditures, Reconciliation) :-
   foldl(reconcile, Donations, Expenditures, Reconciliation).
 </programlisting>
 
-  <para>If we run what we have so far, we'll get exactly where everybody stands in terms of what they've spent:</para>
+  <para>
+    If we run what we have so far, we'll get exactly where everybody
+    stands in terms of what they've spent:
+  </para>
 
   <screen>?- reconcile(X).
 X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</screen>
 
-  <para>There are two problems with these numbers. First, they do not yet include expected contributions, and two, some are negative. But, using this and the expected contribution from above, we can convert this into a list of who owes and who is owed. I call this <code>balances/2</code>. To make this attractive, let's add some additional operators:</para>
+  <para>
+    There are two problems with these numbers. First, they do not yet
+    include expected contributions, and two, some are negative. But,
+    using this and the expected contribution from above, we can
+    convert this into a list of who owes and who is owed. Then all the
+    numbers will be positive, and their role will be determined by
+    whether they are a debt or a credit rather than by their
+    sign. This goes against what would be considered proper design in
+    a procedural or object-oriented system, but it will actually be a
+    benefit in Prolog because it will create pattern matching
+    opportunities. To make it attractive, let's add some additional
+    operators:</para>
 
 <programlisting role="source">:- op(400, xfx, owes).
 :- op(400, xfx, is_owed).
 :- op(400, xfy, gives).
 </programlisting>
   
-  <para>To do this, we have to consider three cases.</para>
+  <para>
+    Now we can write a predicate to take the raw list of where people
+    stand and compute people's credit/debt status. I call this process
+    <function>balances/2</function>. To do this, we have to consider
+    three cases.
+  </para>
 
   <orderedlist>
     <listitem>
-      <para>In the case where the person spent more than the expected contribution, that roommate is owed the difference.</para>
+      <para>
+        In the case where the person spent more than the expected
+        contribution, that roommate is owed the difference.
+      </para>
     
       <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
   expected_contribution(Baseline),
@@ -151,7 +338,10 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
     </listitem>
 
     <listitem>
-      <para>In the case where the person spent less than the expected contribution, they owe the difference:</para>
+      <para>
+        In the case where the person spent less than the expected
+        contribution, they owe the difference:
+      </para>
 
       <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
   expected_contribution(Baseline),
@@ -162,7 +352,13 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
     </listitem>
 
     <listitem>
-      <para>In the case where the person spent exactly the expected contribution, they can be omitted from further discussion; they are "square" as it were. This one detail prevents us from using a <code>maplist/3</code> to deal with this, though we could conceivably use <code>foldl/4</code>.</para>
+      <para>
+        In the case where the person spent exactly the expected
+        contribution, they can be omitted from further discussion;
+        they are "square" as it were. This one detail prevents us from
+        using a <code>maplist/3</code> to deal with this, though we
+        could conceivably use <code>foldl/4</code>.
+      </para>
 
       <programlisting role="source">balances([_ spent Baseline|Roommates], Debts) :-
   expected_contribution(Baseline),
@@ -171,7 +367,10 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
     </listitem>
 
     <listitem>
-      <para>And of course we need a base case for our recursion, the case where we're out of people to consider.</para>
+      <para>
+        And of course we need a base case for our recursion, the case
+        where we're out of people to consider.
+      </para>
 
       <programlisting role="source">balances([], []).
 </programlisting>
@@ -184,17 +383,34 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
 X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
 Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].</screen>
 
-  <para>This looks pretty good so far. Let's figure out the suggestions for complete reconciliation.</para>
+  <para>
+    This looks pretty good! Let's figure out the suggestions
+    for complete reconciliation.
+  </para>
 
   <orderedlist>
     <listitem>
-      <para>First we have the base case: when there are no discrepancies, no further suggestions are required.</para>
+      <para>
+        First we have the base case: when there are no discrepancies,
+        no further suggestions are required.
+      </para>
+
       <programlisting role="source">suggestions([], []).
 </programlisting>
     </listitem>
 
     <listitem>
-      <para>The next case is a special one, where one person owes exactly what another person is owed. In that case, we generate the expected suggestion and then recur, having dealt with both roommates.</para>
+      <para>
+        The next case is a special one, where one person owes exactly
+        what another person is owed. In that case, we generate the
+        expected suggestion and then recur, having dealt with both
+        roommates.
+      </para>
+
+      <para>
+	Intuitively, it seems likely that this case will be triggered
+	once at the end of each suggestion invocation.
+      </para>
       
     <programlisting role="source">suggestions(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
   select(Debtor owes Amount, Situation, WithoutDebtor),
@@ -205,7 +421,13 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 
     <listitem>
       <para>
-	This case and the following have a similar structure. In both cases, we peel off somebody who owes and somebody who is owed money. Then we examine the debt and the credit and see which is greater. If the debt is greater, the credit will be cleared but the some part of the debt will remain, so the creditor will be removed from the situation list but the debtor will be reinserted with a wly reduced debt.
+	This case and the following have a similar structure. In both
+	cases, we peel off somebody who owes and somebody who is owed
+	money. Then we examine the debt and the credit and see which
+	is greater. If the debt is greater, the credit will be cleared
+	but the some part of the debt will remain, so the creditor
+	will be removed from the situation list but the debtor will be
+	reinserted with a wly reduced debt.
       </para>
       
     <programlisting role="source">suggestions(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
@@ -219,8 +441,10 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 
     <listitem>
       <para>
-	This is the opposite case, where the credit is greater, so the debt is cleared while some part of the credit remains.
+	This is the opposite case, where the credit is greater, so the
+	debt is cleared while some part of the credit remains.
       </para>
+
     <programlisting role="source">suggestions(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
   select(Debtor owes Debt, Situation, WithoutDebtor),
   select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
@@ -231,7 +455,10 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
     </listitem>
   </orderedlist>
 
-  <para>The first version of the code is now substantively complete. You can run it like so:</para>
+  <para>
+    The first version of the code is now basically complete. You
+    can run it like so:
+  </para>
 
   <screen>?- reconcile(X), balances(X, Y), suggestions(Y, Z), write(Z), nl.
 [debra gives 3650 to dexter,debra gives 700 to angel,harry gives 3750 to angel]
@@ -240,8 +467,59 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750],
 Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to angel] ;
 </screen>
 
-  <para>You'll notice now that there are several solutions. This is an automatic result of using Prolog to solve this problem.</para>
+  <para>
+    You'll notice now that you can get several solutions. This is an
+    automatic result of using Prolog to solve this problem. All of the
+    solutions are equivalent, in the sense that everybody with debt
+    pays up to somebody and everybody with a credit is reimbursed. In
+    fact several of the solutions are simply the same instructions
+    reordered. This is normal and not undesirable.
+  </para>
 
-  <para>You may download <link xl:href="shared-expenses.docbook">source code for this book</link> or <link xl:href="shared-expenses.pl">generated Prolog source code</link>.</para>
+  <para>
+    Another thing to note is that we have arrived at a reasonably
+    efficient solution (at least, for the case sizes we're likely to
+    actually address) without using any cuts. This is also
+    desirable. The cut interferes with Prolog's reasoning system. It's
+    much better to use logic to constraint Prolog's behavior, and only
+    use green cuts to help Prolog avoid unnecessary computations that
+    are guaranteed to fail, without altering its behavior in any
+    observable way.
+  </para>
 
+  <programlisting role="source"><![CDATA[
+:- use_module(library(dcg/basics)).
+
+document([]).
+document([Entry|Entries]) --> entry(Entry), nl, document(Entries).
+
+entry(Entry) --> spent(Entry) ; gave(Entry).
+
+spent(Person spent Amount) --> word(Person), whites, "spent", whites, number(Amount).
+gave(Donor gave Amount to Recipient) --> word(Donor), whites, "gave", whites, number(Amount), whites, "to", whites, word(Recipient).
+gave(Donor gave Amount to Recipient) --> word(Donor), whites, "gave", whites, word(Recipient), whites, number(Amount).
+nl --> "\n".
+
+word(WORD) --> { var(WORD), ! },
+   chars(CHARS), { atom_codes(WORD, CHARS) }.
+word(WORD) --> { nonvar(WORD) },
+   { atom_codes(WORD, CHARS) }, chars(CHARS).
+
+chars([X|Y]) --> char(X), chars(Y).
+chars([]) --> [].
+
+char(X) --> [X], { is_char(X) }.
+
+is_char(X) :- X >= 0'a, X =< 0'z, !.
+is_char(X) :- X >= 0'A, X =< 0'Z, !.
+is_char(X) :- X >= 0'0, X =< 0'9, !.
+is_char(0'_).
+]]>
+</programlisting>
+
+  <para>
+    You may download <link xl:href="shared-expenses.docbook">source
+    code for this article</link> or <link
+    xl:href="shared-expenses.pl">generated Prolog source code</link>.
+  </para>
 </article>
