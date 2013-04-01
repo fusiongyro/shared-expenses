@@ -491,6 +491,58 @@ Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to a
     observable way.
   </para>
 
+  <sidebar>
+    <title>A digression on expressiveness and terseness</title>
+    
+    <para>
+      If you read the original blog post, you were probably both
+      impressed and somewhat miffed by the completely obtuse
+      code. This plays nicely into what Paul Graham so memorably
+      implied about Prolog, that a language can be high level, but if
+      it isn't terse why would it be worth knowing? Is it true that
+      <quote>it's all downhill after you write
+      <function>append/3</function></quote>?
+    </para>
+
+    <para>
+      I suppose since you're here, you have some interest in
+      Prolog. One of the main reasons for this discussion is because I
+      want to instill in you, and perhaps the rest of the world, the
+      idea that terseness is not necessarily the greatest end. Prolog
+      is very seldom terse. But when written well, it is transparent
+      and intuitive in ways that other languages simply never get to
+      be. It can also be horrifyingly obtuse and confusing, and it can
+      take a lot of unlearning to learn, but I contend that it is
+      worth it.
+    </para>
+
+    <para>
+      Looking at the code we just wrote, one way of looking at it is
+      that it does in 20 or 50 lines what Haskell did in 10 or 20. And
+      there's something to be said about that. But the Haskell code is
+      basically incomprehensible, whereas the Prolog code perfectly
+      reflects what it is that we're doing, matching up debtors to
+      creditors and transferring money. Where the Haskell code
+      started with a DSL and then went full-bore into Haskell-land,
+      the Prolog code started with a DSL and then continued to use
+      that DSL to code the solution. We wound up with the best of
+      both, and a great deal of what could have made Applescript
+      great: a well-defined representation that recalled the natural
+      language version, and made it easier to reason about what we
+      were up to.
+    </para>
+
+    <para>
+      Is Prolog right for every situation? No, of course not. But I
+      think it's right for a lot more than it gets given credit
+      for. Maybe these attributes would not make it especially
+      appropriate for programmers, but I do wonder if they might make
+      it more appropriate for non-programmers, who are less fixated on
+      performance and perfection, but could use a more malleable
+      language that more directly represents their interests.
+    </para>
+  </sidebar>
+
   <programlisting role="source"><![CDATA[
 :- use_module(library(dcg/basics)).
 
