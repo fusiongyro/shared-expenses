@@ -44,7 +44,7 @@
   <para>Let's examine a Prolog solution.</para>
 
   <para>
-    As a firs step, let's define some operators so we can make this
+    As a first step, let's define some operators so we can make this
     into a <acronym>DSL</acronym> or domain-specific language
   </para>
 
@@ -492,6 +492,32 @@ Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to a
     observable way.
   </para>
 
+  <para>
+    Let's package it up in a single convenient method:
+  </para>
+
+  <programlisting role="source">solve(Solution) :-
+    reconcile(Expenditures), 
+    balances(Expenditures, Balances), 
+    resolution(Balances, Solution).
+</programlisting>
+
+  <para>
+    And in action, we see it still works:
+  </para>
+
+  <screen>?- solve(Solution).
+Solution = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to angel] ;
+Solution = [debra gives 3650 to dexter, harry gives 3750 to angel, debra gives 700 to angel] ;
+Solution = [harry gives 3650 to dexter, harry gives 100 to angel, debra gives 4350 to angel] ;
+Solution = [harry gives 3650 to dexter, debra gives 4350 to angel, harry gives 100 to angel] ;
+Solution = [debra gives 4350 to angel, harry gives 100 to angel, harry gives 3650 to dexter] ;
+Solution = [debra gives 4350 to angel, harry gives 3650 to dexter, harry gives 100 to angel] ;
+Solution = [harry gives 3750 to angel, debra gives 700 to angel, debra gives 3650 to dexter] ;
+Solution = [harry gives 3750 to angel, debra gives 3650 to dexter, debra gives 700 to angel] ;
+false.
+</screen>
+
   <sidebar>
     <title>A digression on expressiveness and terseness</title>
     
@@ -602,9 +628,7 @@ gave(Donor gave Amount to Recipient) -->
 ]]></programlisting>
 
   <para>
-    The following are essentially boilerplate; the
-    <code>word//1</code> and <code>chars//1</code> productions are
-    copied from the Amzi Prolog Tutorial. 
+    The following are really simple productions, practically boilerplate
   </para>
 
   <programlisting role="source"><![CDATA[
@@ -612,7 +636,16 @@ nl --> "\n".
 
 currency(Amount) --> "$", number(Amount).
 currency(Amount) --> number(Amount).
+]]></programlisting>
 
+  <para>
+    The <code>word//1</code> and <code>chars//1</code> productions are
+    borrowed from <link
+    xl:href="http://www.amzi.com/manuals/amzi/pro/ref_dcg.htm">the
+    Amzi Prolog User's Guide and Reference.</link>
+  </para>
+
+  <programlisting role="source"><![CDATA[
 word(Word) --> { var(Word), ! },
    chars(Chars), { atom_codes(Word, Chars) }.
 word(Word) --> { nonvar(Word) },
@@ -647,6 +680,14 @@ X = ['Dexter' gave 2000 to 'Harry', 'Debra' spent 800, 'Harry' spent
 1900, 'Debra' spent 1700, 'Angel' spent 2200, 'Angel' gave 3200 to
 'Debra'].
 </screen>
+
+  <para>
+    This is great, but we need to get these facts into the database somehow. A simple way is with <code>forall/1</code>:
+  </para>
+
+  <programlisting role="source">load_document(Document) :-
+    forall(member(Fact, Document), assertz(Fact)).
+  </programlisting>
   
   <para>
     You may download <link xl:href="shared-expenses.docbook">source
