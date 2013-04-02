@@ -7,7 +7,7 @@ all: shared-expenses.html shared-expenses.pl shared-expenses.pdf
 	xsltproc --output $@ code.xsl $<
 
 # document output: HTML and then FO
-%.html: %.docbook dkl.css.xml docbook/xhtml5/docbook.xsl
+%.html: %.docbook dkl.css.xml docbook/xhtml5/docbook.xsl docbook/xhtml5/syntax-highlighting.xsl
 	xsltproc --xinclude --output $@ docbook/xhtml5/docbook.xsl $<
 
 %.fo: %.docbook docbook/fo/docbook.xsl
