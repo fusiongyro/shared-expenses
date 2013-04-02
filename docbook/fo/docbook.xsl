@@ -5,6 +5,8 @@
     exclude-result-prefixes="d">
   <xsl:import href="http://docbook.sourceforge.net/release/xsl/current/fo/docbook.xsl"/>
 
+  <xsl:include href="../common/common.xsl"/>
+
   <xsl:param name="monospace.font.family">Ubuntu Light</xsl:param>
   <xsl:param name="monospace.font.size">9pt</xsl:param>
   
