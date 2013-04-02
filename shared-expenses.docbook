@@ -632,23 +632,8 @@ is_char(0'_).
 
   <para>
     Now we can make an example file with the same information as the
-    original database:
-  </para>
-
-  <programlisting>Angel spent $2700
-Dexter gave $2000 to Harry
-
-Debra spent $800
-Harry spent $1900
-Debra spent $1700
-Angel spent $2200
-
-Angel gave Debra $3200
-</programlisting>
-
-  <para>
-    Save this file in <code>shared-expenses.txt</code> and let's try
-    to parse it:
+    original database. Save this file in
+    <code>shared-expenses.txt</code> and let's try to parse it:
   </para>
 
   <screen><xi:include href="shared-expenses.txt" parse="text" encoding="utf-8"/></screen>
