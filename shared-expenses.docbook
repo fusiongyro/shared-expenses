@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <article xmlns="http://docbook.org/ns/docbook"
 	 xmlns:xl="http://www.w3.org/1999/xlink"
+	 xmlns:xi="http://www.w3.org/2001/XInclude"
 	 version="5.0">
   <title>Shared Expenses, a Prolog Solver</title>
 
@@ -563,16 +564,17 @@ Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to a
   </para>
 
   <programlisting role="source"><![CDATA[document([]) --> [].
-document([Entry|Entries]) --> entry(Entry), nl, document(Entries).
+document([Entry|Entries]) --> entry(Entry), blanks, document(Entries).
 
 entry(Entry) --> spent(Entry) ; gave(Entry).
 ]]></programlisting>
 
   <para>
     Now, spending is pretty straightforward; we'll just match lines
-    that look like <code>Sally spent 1000</code>. We won't be
-    expecting a period, just a newline. And we can swallow a dollar
-    sign, should there happen to be one.
+    that look like <code>Sally spent $1000</code>. We won't be
+    expecting a period, just a newline. And we can swallow the dollar
+    sign, should there happen to be one, without worrying if there
+    isn't one.
   </para>
   
   <programlisting role="source"><![CDATA[
@@ -599,6 +601,12 @@ gave(Donor gave Amount to Recipient) -->
     currency(Amount).
 ]]></programlisting>
 
+  <para>
+    The following are essentially boilerplate; the
+    <code>word//1</code> and <code>chars//1</code> productions are
+    copied from the Amzi Prolog Tutorial. 
+  </para>
+
   <programlisting role="source"><![CDATA[
 nl --> "\n".
 
@@ -622,6 +630,39 @@ is_char(0'_).
 ]]>
 </programlisting>
 
+  <para>
+    Now we can make an example file with the same information as the
+    original database:
+  </para>
+
+  <programlisting>Angel spent $2700
+Dexter gave $2000 to Harry
+
+Debra spent $800
+Harry spent $1900
+Debra spent $1700
+Angel spent $2200
+
+Angel gave Debra $3200
+</programlisting>
+
+  <para>
+    Save this file in <code>shared-expenses.txt</code> and let's try
+    to parse it:
+  </para>
+
+  <screen><xi:include href="shared-expenses.txt" parse="text" encoding="utf-8"/></screen>
+
+  <para>
+    Testing this shows that it is working:
+  </para>
+
+  <screen>?- phrase_from_file(document(X), 'shared-expenses.txt').
+X = ['Dexter' gave 2000 to 'Harry', 'Debra' spent 800, 'Harry' spent
+1900, 'Debra' spent 1700, 'Angel' spent 2200, 'Angel' gave 3200 to
+'Debra'].
+</screen>
+  
   <para>
     You may download <link xl:href="shared-expenses.docbook">source
     code for this article</link>

@@ -8,10 +8,10 @@ all: shared-expenses.html shared-expenses.pl shared-expenses.pdf
 
 # document output: HTML and then FO
 %.html: %.docbook dkl.css.xml docbook/xhtml5/docbook.xsl
-	xsltproc --output $@ docbook/xhtml5/docbook.xsl $<
+	xsltproc --xinclude --output $@ docbook/xhtml5/docbook.xsl $<
 
 %.fo: %.docbook docbook/fo/docbook.xsl
-	xsltproc --output $@ docbook/fo/docbook.xsl $<
+	xsltproc --xinclude --output $@ docbook/fo/docbook.xsl $<
 
 %.pdf: %.fo
 	fop $< $@
