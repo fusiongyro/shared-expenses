@@ -96,8 +96,8 @@ angel gave 3200 to debra.
   </para>
 
   <programlisting role="source">total_spent(Person, Total) :-
-  bagof(Amount, Person spent Amount, Receipts),
-  sum(Receipts, Total).
+    bagof(Amount, Person spent Amount, Receipts),
+    sum(Receipts, Total).
 </programlisting>
 
   <para>Unfortunately, the predicate <function>total_spent/2</function> references <function>sum/2</function>>, which isn't in the standard library, but should be. We can add our own implementation:</para>
@@ -144,12 +144,12 @@ Total = 1900.</screen>
     outcome, just the amount of work that goes into producing it.
   </para>
 
-  <programlisting role="source">total_outlay(Total) :-
-  findall(Amount, _ spent Amount, Expenditures),
-  sum(Expenditures, Total).
+  <programlisting role="source">total_cost(Total) :-
+    findall(Amount, _ spent Amount, Expenditures),
+    sum(Expenditures, Total).
 </programlisting>
 
-  <screen>?- total_outlay(X).
+  <screen>?- total_cost(X).
 X = 14600.</screen>
 
   <para>
@@ -158,10 +158,10 @@ X = 14600.</screen>
   </para>
 
   <programlisting>expected_contribution(X) :-
-  total_outlay(Total),
-  setof(Person, A^(Person spent A), People),
-  length(People, RoommateCount),
-  X is Total / RoommateCount.
+    total_cost(Total),
+    setof(Person, A^(Person spent A), People),
+    length(People, RoommateCount),
+    X is Total / RoommateCount.
 </programlisting>
 
   <para>
@@ -187,10 +187,10 @@ X = 14600.</screen>
 roommate(Roomie) :- Roomie gave _ to _.
 
 expected_contribution(X) :-
-  total_outlay(Total),
-  setof(Person, roommate(Person), People),
-  length(People, RoommateCount),
-  X is Total / RoommateCount.
+    total_cost(Total),
+    setof(Person, roommate(Person), People),
+    length(People, RoommateCount),
+    X is Total / RoommateCount.
 </programlisting>
 
   <screen>?- expected_contribution(X).
@@ -206,7 +206,7 @@ X = 3650.</screen>
   <para>
     There are two ways forward from here. Let's examine them both. The
     first one is to use the database to store what we calculate. We
-    could <code>asserta(owes(Person, ExpectedContribution))</code> and
+    could <code>assertz(owes(Person, ExpectedContribution))</code> and
     then have one process to update that value, first with what
     they've spent, then with the result of applying their donations. A
     part of me balks at this because it means storing intermediate
@@ -241,9 +241,9 @@ X = 3650.</screen>
   </para>
 
   <programlisting role="source">reconcile(Reconciliation) :-
-  findall(X spent Amt, total_spent(X, Amt), Expenditures),
-  findall(X gave Y to Z, X gave Y to Z, Donations),
-  reconcile_all(Donations, Expenditures, Reconciliation).
+    findall(X spent Amt, total_spent(X, Amt), Expenditures),
+    findall(X gave Y to Z, X gave Y to Z, Donations),
+    reconcile_all(Donations, Expenditures, Reconciliation).
 </programlisting>
 
   <para>
@@ -257,10 +257,10 @@ X = 3650.</screen>
   <programlisting role="source">reconcile(Donor gave Amt to Recipient,
           PreviousExpenditures,
           [Donor spent DonorAfter, Recipient spent RecipientAfter | WithoutEither]) :-
-  select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
-  select(Recipient spent RecipientBefore, WithoutDonor, WithoutEither),
-  DonorAfter is DonorBefore + Amt,
-  RecipientAfter is RecipientBefore - Amt.
+    select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
+    select(Recipient spent RecipientBefore, WithoutDonor, WithoutEither),
+    DonorAfter is DonorBefore + Amt,
+    RecipientAfter is RecipientBefore - Amt.
 </programlisting>
 
   <para>
@@ -290,7 +290,7 @@ X = 3650.</screen>
   </para>
 
   <programlisting role="source">reconcile_all(Donations, Expenditures, Reconciliation) :-
-  foldl(reconcile, Donations, Expenditures, Reconciliation).
+    foldl(reconcile, Donations, Expenditures, Reconciliation).
 </programlisting>
 
   <para>
@@ -334,10 +334,10 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
       </para>
     
       <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
-  expected_contribution(Baseline),
-  Expenditure > Baseline,
-  Amount is Expenditure - Baseline,
-  balances(Roommates, Debts).
+    expected_contribution(Baseline),
+    Expenditure > Baseline,
+    Amount is Expenditure - Baseline,
+    balances(Roommates, Debts).
 </programlisting>
     </listitem>
 
@@ -348,10 +348,10 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
       </para>
 
       <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
-  expected_contribution(Baseline),
-  Baseline > Expenditure,
-  Amount is Baseline - Expenditure,
-  balances(Roommates, Debts).
+    expected_contribution(Baseline),
+    Baseline > Expenditure,
+    Amount is Baseline - Expenditure,
+    balances(Roommates, Debts).
 </programlisting>
     </listitem>
 
@@ -365,8 +365,8 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
       </para>
 
       <programlisting role="source">balances([_ spent Baseline|Roommates], Debts) :-
-  expected_contribution(Baseline),
-  balances(Roommates, Debts).
+    expected_contribution(Baseline),
+    balances(Roommates, Debts).
 </programlisting>
     </listitem>
 
@@ -399,7 +399,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
         no further suggestions are required.
       </para>
 
-      <programlisting role="source">suggestions([], []).
+      <programlisting role="source">resolution([], []).
 </programlisting>
     </listitem>
 
@@ -416,10 +416,10 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	once at the end of each suggestion invocation.
       </para>
       
-    <programlisting role="source">suggestions(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
-  select(Debtor owes Amount, Situation, WithoutDebtor),
-  select(Creditor is_owed Amount, WithoutDebtor, WithoutCreditor),
-  suggestions(WithoutCreditor, Suggestions).
+    <programlisting role="source">resolution(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
+    select(Debtor owes Amount, Situation, WithoutDebtor),
+    select(Creditor is_owed Amount, WithoutDebtor, WithoutCreditor),
+    resolution(WithoutCreditor, Suggestions).
 </programlisting>
     </listitem>
 
@@ -434,12 +434,12 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	reinserted with a wly reduced debt.
       </para>
       
-    <programlisting role="source">suggestions(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
-  select(Debtor owes Debt, Situation, WithoutDebtor),
-  select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
-  Debt > Credit,
-  NewDebt is Debt - Credit,
-  suggestions([Debtor owes NewDebt|WithoutCreditor], Suggestions).
+    <programlisting role="source">resolution(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
+    select(Debtor owes Debt, Situation, WithoutDebtor),
+    select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+    Debt > Credit,
+    NewDebt is Debt - Credit,
+    resolution([Debtor owes NewDebt|WithoutCreditor], Suggestions).
 </programlisting>
     </listitem>
 
@@ -449,12 +449,12 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	debt is cleared while some part of the credit remains.
       </para>
 
-    <programlisting role="source">suggestions(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
-  select(Debtor owes Debt, Situation, WithoutDebtor),
-  select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
-  Credit > Debt,
-  NewCredit is Credit - Debt,
-  suggestions([Creditor is_owed NewCredit|WithoutCreditor], Suggestions).
+    <programlisting role="source">resolution(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
+    select(Debtor owes Debt, Situation, WithoutDebtor),
+    select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+    Credit > Debt,
+    NewCredit is Credit - Debt,
+    resolution([Creditor is_owed NewCredit|WithoutCreditor], Suggestions).
 </programlisting>
     </listitem>
   </orderedlist>
@@ -464,7 +464,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
     can run it like so:
   </para>
 
-  <screen>?- reconcile(X), balances(X, Y), suggestions(Y, Z), write(Z), nl.
+  <screen>?- reconcile(X), balances(X, Y), resolution(Y, Z), write(Z), nl.
 [debra gives 3650 to dexter,debra gives 700 to angel,harry gives 3750 to angel]
 X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
 Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750],
@@ -587,16 +587,16 @@ spent(Person spent Amount) --> word(Person), whites, "spent", whites, currency(A
     
   <programlisting role="source"><![CDATA[
 gave(Donor gave Amount to Recipient) --> 
-  word(Donor), whites, 
-  "gave", whites, 
-  currency(Amount), whites, 
-  "to", whites, 
-  word(Recipient).
+    word(Donor), whites, 
+    "gave", whites, 
+    currency(Amount), whites, 
+    "to", whites, 
+    word(Recipient).
 gave(Donor gave Amount to Recipient) --> 
-  word(Donor), whites, 
-  "gave", whites, 
-  word(Recipient), whites, 
-  currency(Amount).
+    word(Donor), whites, 
+    "gave", whites, 
+    word(Recipient), whites, 
+    currency(Amount).
 ]]></programlisting>
 
   <programlisting role="source"><![CDATA[
@@ -605,10 +605,10 @@ nl --> "\n".
 currency(Amount) --> "$", number(Amount).
 currency(Amount) --> number(Amount).
 
-word(WORD) --> { var(WORD), ! },
-   chars(CHARS), { atom_codes(WORD, CHARS) }.
-word(WORD) --> { nonvar(WORD) },
-   { atom_codes(WORD, CHARS) }, chars(CHARS).
+word(Word) --> { var(Word), ! },
+   chars(Chars), { atom_codes(Word, Chars) }.
+word(Word) --> { nonvar(Word) },
+   { atom_codes(Word, Chars) }, chars(Chars).
 
 chars([X|Y]) --> char(X), chars(Y).
 chars([]) --> [].

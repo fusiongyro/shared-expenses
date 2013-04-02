@@ -2,18 +2,16 @@ DOCBOOK_ROOT := /opt/local/share/xsl/docbook-xsl
 
 all: shared-expenses.html shared-expenses.pl shared-expenses.pdf
 
-%.html: %.docbook
-	xsltproc --output $@ \
-		--stringparam make.clean.html true \
-		--stringparam custom.css.source dkl.css.xml \
-		$(DOCBOOK_ROOT)/html/docbook.xsl $<
-
+# code generating style
 %.pl: %.docbook code.xsl
 	xsltproc --output $@ code.xsl $<
 
+# document output: HTML and then FO
+%.html: %.docbook dkl.css.xml
+	xsltproc --output $@ docbook/xhtml5/docbook.xsl $<
+
 %.fo: %.docbook
-	xsltproc --output $@ \
-		$(DOCBOOK_ROOT)/fo/docbook.xsl $<
+	xsltproc --output $@ docbook/fo/docbook.xsl $<
 
 %.pdf: %.fo
 	fop $< $@
