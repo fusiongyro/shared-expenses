@@ -3,7 +3,8 @@
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
     xmlns:d="http://docbook.org/ns/docbook"
     xmlns="http://www.w3.org/1999/xhtml"
-    exclude-result-prefixes="d">
+    xmlns:sh="xmlns:sh"
+    exclude-result-prefixes="d sh">
 
   <!-- Syntax Highlighting -->
 
@@ -27,8 +28,9 @@
   <!-- Finally, we need to tag our programlistings with a special
        class to indicate that we want source highlighting. Note that
        it's only going to handle Prolog this way. -->
-  <xsl:template match="programlisting">
-    <pre class="programlisting sh_prolog">
+  <xsl:template match="programlisting[@sh:language]">
+    <pre>
+      <xsl:attribute name="class">programlisting sh_<xsl:value-of select="@sh:language"/></xsl:attribute>
       <xsl:apply-templates/>
     </pre>
   </xsl:template>
