@@ -14,7 +14,7 @@ all: shared-expenses.html shared-expenses.pl shared-expenses.pdf
 	xsltproc --xinclude --output $@ docbook/fo/docbook.xsl $<
 
 %.pdf: %.fo
-	fop $< $@
+	fop -c ~/Downloads/fop-1.1/conf/fop.xconf $< $@
 
 .PHONY: clean
 clean:

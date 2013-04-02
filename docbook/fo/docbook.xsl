@@ -5,9 +5,10 @@
     exclude-result-prefixes="d">
   <xsl:import href="http://docbook.sourceforge.net/release/xsl/current/fo/docbook.xsl"/>
 
+  <xsl:param name="monospace.font.family">Ubuntu Light</xsl:param>
+  <xsl:param name="monospace.font.size">9pt</xsl:param>
+  
   <xsl:attribute-set name="monospace.verbatim.properties">
-    <xsl:attribute name="font-family">Ubuntu Light</xsl:attribute>
-    <xsl:attribute name="font-size">10pt</xsl:attribute>
     <xsl:attribute name="keep-together.within-column">always</xsl:attribute>
   </xsl:attribute-set>
 </xsl:stylesheet>

@@ -101,7 +101,7 @@ angel gave 3200 to debra.
     sum(Receipts, Total).
 </programlisting>
 
-  <para>Unfortunately, the predicate <function>total_spent/2</function> references <function>sum/2</function>>, which isn't in the standard library, but should be. We can add our own implementation:</para>
+  <para>Unfortunately, the predicate <function>total_spent/2</function> references <function>sum/2</function>, which isn't in the standard library, but should be. We can add our own implementation:</para>
 
   <programlisting role="source">sum(List, Total) :- sum(List, 0, Total).
 
