@@ -1,5 +1,5 @@
 <?xml version='1.0'?>
-<xsl:stylesheet  
+<xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
     xmlns:d="http://docbook.org/ns/docbook"
     xmlns="http://www.w3.org/1999/xhtml"
@@ -17,14 +17,17 @@
     <script type="text/javascript" src="shjs-0.6/lang/sh_prolog.js">&#160;</script>
 
     <!-- The "The" theme, which is nicer than the default nedit theme -->
-    <link type="text/css" rel="stylesheet" href="shjs-0.6/css/sh_the.css">&#160;</link>
+    <link type="text/css" rel="stylesheet" href="shjs-0.6/css/sh_the.css"/>
+
+    <!-- let's set an encoding here -->
+    <meta charset="utf-8"/>
   </xsl:template>
 
   <!-- Next, we need to make sure there is an onload property on the body -->
   <xsl:template name="body.attributes">
     <xsl:attribute name="onload">sh_highlightDocument();</xsl:attribute>
   </xsl:template>
-  
+
   <!-- Finally, we need to tag our programlistings with a special
        class to indicate that we want source highlighting. Note that
        it's only going to handle Prolog this way. -->
