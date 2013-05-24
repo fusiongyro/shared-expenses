@@ -13,17 +13,17 @@
   </para>
   
   <para>
-    I
-    saw <link xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
+    I saw <link
+    xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
     article about this problem</link> a while back. The novelty of
     this solution is that rather than everybody throwing their money
     into a single big pot, the roommates who have debt pay the
-    roommates with credit. Let's do a simple example.
+    roommates with credit.
   </para>
 
   <para>
-    Take the simplest interesting case. There are two roommates, Alice
-    and Bob. They each spend $500 on rent. Alice then pays the
+    Let's take the simplest interesting case. There are two roommates,
+    Alice and Bob. They each spend $500 on rent. Alice then pays the
     electric bill for $200. The total outlay for this month is $1000 +
     $200 = $1200. Alice has spent $700, Bob has spent $500. To make it
     fair, Bob has to pay Alice $100. After that transaction, Alice's
@@ -31,17 +31,20 @@
   </para>
 
   <para>
-    This example suggests a procedure. We calculate the total amount
-    everybody spent, then the expected contribution, then the
-    difference for each roommate from the amount they spent and their
-    expected contribution. The reconciliation process is simply
-    matching up creditors with debtors. One senses that this process
-    is probably fixed-point (assuming we can take arbitrary fractions
-    of a dollar) since every credit must be matched by an equal amount
-    of debt somewhere else.
+    Working through this example suggests a procedure. We calculate
+    the total amount everybody spent, then the expected contribution,
+    then the difference for each roommate from the amount they spent
+    and their expected contribution. The reconciliation process is
+    simply matching up creditors with debtors. One senses that this
+    process is probably fixed-point (assuming we can take arbitrary
+    fractions of a dollar) since every credit must be matched by an
+    equal amount of debt somewhere else.
   </para>
 
-  <para>Let's examine a Prolog solution.</para>
+  <para>
+    For some reason, this problem screams Prolog to me. Let's walk
+    through a Prolog solution.
+  </para>
 
   <para>
     As a first step, let's define some operators so we can make this
@@ -71,7 +74,7 @@ true.</programlisting>
     harry))</code>. The second example there looks a little bad, but
     since we're only ever going to use the <quote>transitive</quote>
     version, and we'll be pattern matching with it, it really doesn't
-    matter which values are in which positions in the real
+    matter which values are in which positions in the actual
     intermediate representation. We're concerned about aesthetics. In
     fact, let's bring over the sample database so we can see them:
   </para>
@@ -90,10 +93,10 @@ angel gave 3200 to debra.
   <para>
     This is somewhat more attractive than the Haskell version, despite
     conveying the same information from within the syntactic
-    constraints of the language. Let's build on this, let's figure out
+    constraints of the language. Let's build on this by figuring out
     what everybody's personal expenditures are, not taking into
-    account <quote>gifts</quote> just yet. The idea here is to sum up
-    the amount spent per person.
+    account <quote>gifts</quote>. Let's just sum up the amount spent
+    per person.
   </para>
 
   <programlisting role="source">total_spent(Person, Total) :-
@@ -128,14 +131,15 @@ Person = harry,
 Total = 1900.</screen>
 
   <para>
-    What separates Prolog from other programming languages is that
-    predicates can be <quote>driven</quote> in different
-    ways. Different arguments can serve as input or output depending
-    on the circumstances. The above predicate is written generally
-    enough that it can actually generate the people as well as their
-    totals. It's desirable that predicates have this universality as
-    much as possible. The more ways the predicate can be called, the
-    freer we are in applying Prolog's power to our problem.
+    One major difference between Prolog and other programming
+    languages is that predicates can be <quote>driven</quote> in
+    different ways. Different arguments can serve as input or output
+    depending on the circumstances. The above predicate is written
+    generally enough that it can actually generate the people as well
+    as their totals. It's desirable that predicates have this
+    universality as much as possible. The more ways the predicate can
+    be called, the freer we are in applying Prolog's power to our
+    problem.
   </para>
 
   <para>
@@ -213,8 +217,9 @@ X = 3650.</screen>
     part of me balks at this because it means storing intermediate
     results in the fact database, which is not susceptible to
     backtracking and can therefore introduce errors in a way that our
-    raw data cannot. But this is standard operating procedure in a
-    forward-chaining reasoner like CLIPS. We'll examine this approach
+    raw data cannot. (This is standard operating procedure in a
+    forward-chaining reasoner like CLIPS, but that's a topic for
+    another day).
     last.
   </para>
 
@@ -233,8 +238,9 @@ X = 3650.</screen>
     Odds are good if you're new to Prolog and come from a procedural
     background, the first solution will sound better to you. If you
     come from a functional background the second solution will
-    probably sound better to you. It will be interesting to know which
-    one you like better after you see them both.
+    probably sound better to you. It would be interesting to know which
+    one you like better after you see them both, but I'm just going to
+    show the Prolog style.
   </para>
 
   <para>
@@ -308,12 +314,13 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
     using this and the expected contribution from above, we can
     convert this into a list of who owes and who is owed. Then all the
     numbers will be positive, and their role will be determined by
-    whether they are a debt or a credit rather than by their
-    sign. This goes against what would be considered proper design in
-    a procedural or object-oriented system, but it will actually be a
+    whether they are a debt or a credit rather than by their sign.
+    This goes against what would be considered proper design in a
+    procedural or object-oriented system, but it will actually be a
     benefit in Prolog because it will create pattern matching
-    opportunities. To make it attractive, let's add some additional
-    operators:</para>
+    opportunities that would not exist with just a bare number. To
+    make it attractive, let's add some additional operators:
+  </para>
 
 <programlisting role="source">:- op(400, xfx, owes).
 :- op(400, xfx, is_owed).
