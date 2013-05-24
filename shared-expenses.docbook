@@ -2,39 +2,16 @@
 <article xmlns="http://docbook.org/ns/docbook"
 	 xmlns:xl="http://www.w3.org/1999/xlink"
 	 xmlns:xi="http://www.w3.org/2001/XInclude"
-	 xmlns:sh="xmlns:sh"
 	 version="5.0">
   <title>Shared Expenses, a Prolog Solver</title>
+
+  <para>
+    In a shared living situation, it can be hard to keep track of
+    living expenses. A major complicating factor is that one roommate
+    may reimburse another for some expense, and that money has to be
+    taken into account.
+  </para>
   
-  <para>
-    It's the first. You're sitting on the couch. Jennifer walks into
-    the room. Jennifer, we need to talk, you think. Yeah, we both
-    chipped in $600 for rent, but I also spent $300 on fish food
-    (they're very fancy).
-  </para>
-  
-  <para>
-    Arithemetically, it's quite simple. You both spent $1200 on the
-    rent. You also spent $300 on a different shared expense. This
-    comes out to $1500 total. Divided in two, you're each on the hook
-    for $750. But, Jennifer only spent $600, so she owes you $150.
-  </para>
-
-  <para>
-    Aren't you forgetting something? Jennifer says threateningly. Yes,
-    you're forgetting that she gave you $200 last week. So you
-    actually owe her $50, and an apology.
-  </para>
-
-  <para>
-    Alright, but that's a pretty trivial case. What about when there
-    are four roommates and five services, and each one of you paid a
-    different amount? We want to know if a computer can help solve
-    this problem, but without knowing in advance how to solve the
-    problem, we don't even really know where to begin.
-  </para>
-
-  <!--
   <para>
     I
     saw <link xl:href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html">an
@@ -65,14 +42,13 @@
   </para>
 
   <para>Let's examine a Prolog solution.</para>
--->
 
   <para>
     As a first step, let's define some operators so we can make this
     into a <acronym>DSL</acronym> or domain-specific language
   </para>
 
-  <programlisting sh:language="prolog" role="source">:- op(400, xfx, spent).
+  <programlisting role="source">:- op(400, xfx, spent).
 :- op(400, xfy, gave).
 :- op(300, xfx, to).
 </programlisting>
@@ -100,7 +76,7 @@ true.</programlisting>
     fact, let's bring over the sample database so we can see them:
   </para>
 
-  <programlisting sh:language="prolog" role="source">dexter spent 5300.
+  <programlisting role="source">dexter spent 5300.
 angel spent 2700.
 debra spent 800.
 harry spent 1900.
@@ -120,14 +96,14 @@ angel gave 3200 to debra.
     the amount spent per person.
   </para>
 
-  <programlisting sh:language="prolog" role="source">total_spent(Person, Total) :-
+  <programlisting role="source">total_spent(Person, Total) :-
     bagof(Amount, Person spent Amount, Receipts),
     sum(Receipts, Total).
 </programlisting>
 
   <para>Unfortunately, the predicate <function>total_spent/2</function> references <function>sum/2</function>, which isn't in the standard library, but should be. We can add our own implementation:</para>
 
-  <programlisting sh:language="prolog" role="source">sum(List, Total) :- sum(List, 0, Total).
+  <programlisting role="source">sum(List, Total) :- sum(List, 0, Total).
 
 sum([], Total, Total).
 sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
@@ -156,39 +132,30 @@ Total = 1900.</screen>
     predicates can be <quote>driven</quote> in different
     ways. Different arguments can serve as input or output depending
     on the circumstances. The above predicate is written generally
-    enough that it can actually produce the people as well as their
-    totals. It's desirable that predicates have this universal nature
-    as much as possible. The more ways the predicate can be called,
-    the freer we are in applying Prolog's power to our problem. But I
-    digress.
+    enough that it can actually generate the people as well as their
+    totals. It's desirable that predicates have this universality as
+    much as possible. The more ways the predicate can be called, the
+    freer we are in applying Prolog's power to our problem.
   </para>
 
   <para>
-    In our first example, the next thing we did was add up the total
-    that was spent, so let's do that.
+    We can now calculate the total outlay on top of
+    <function>total_spent/2</function> or on top of the raw
+    <function>spent/2</function>> facts; either way, it doesn't affect the
+    outcome, just the amount of work that goes into producing it.
   </para>
 
-  <programlisting sh:language="prolog" role="source">total_cost(Total) :-
+  <programlisting role="source">total_cost(Total) :-
     findall(Amount, _ spent Amount, Expenditures),
     sum(Expenditures, Total).
 </programlisting>
-
-  <para>
-    By the way, we could have calculated the total cost on top of
-    <function>total_spent/2</function> or on top of the raw
-    <function>spent/2</function> facts. It doesn't affect the outcome
-    either way, but I happen to imagine that this is somehow more
-    efficient. Without benchmarking we'll never really know. Does it
-    work?
-  </para>
 
   <screen>?- total_cost(X).
 X = 14600.</screen>
 
   <para>
-    Looks like it does. Now we can now calculate the per-person
-    expected contribution by dividing the total outlay by the number
-    of people:
+    We can now calculate the per-person expected contribution by
+    dividing the total outlay by the number of people:
   </para>
 
   <programlisting>expected_contribution(X) :-
@@ -199,26 +166,25 @@ X = 14600.</screen>
 </programlisting>
 
   <para>
-    This corresponds to the $750 in the situation with Jennifer. And
-    this predicate works. But I find it desirable for Prolog to
-    suggest a natural English reading. Sometimes the logical reading
-    doesn't match particularly closely, because the natural language
-    is insufficiently precise. The first line and the last two lines
-    are quite sensible here. The second line, however, is a little
-    more complex. I'm using the expenditures in the database to
-    furnish me with a list of roommates. This isn't especially robust,
-    since we could have a roommate that only gifts other roommates and
-    doesn't actually spend anything himself (I think we've all met the
-    type). We could even have unpaying roommates, like Fluffy, and we
-    might want to calculate her share as a punitive measure against
-    her owner. In either of these cases, a simple solution is to
-    mandate that the user say, for instance, <code>fluffy spent
-    0.</code>, but a more robust solution would be to either require a
-    list of roommates or make a new predicate to capture
-    <quote>roommateness.</quote> Let's try that.
+    I find it desirable for Prolog to suggest a natural English
+    reading. Sometimes the logical reading doesn't match particularly
+    closely, because the natural language is insufficiently
+    precise. The first line and the last two lines are quite sensible
+    here. The second line, however, is a little more complex. I'm
+    using the expenditures in the database to furnish me with a list
+    of roommates. This isn't especially robust, since we could have a
+    roommate that only gifts other roommates and doesn't actually
+    spend anything himself (I think we've all met the type). We could
+    even have unpaying roommates, like Fluffy, and we might want to
+    calculate her share as a punitive measure against her owner. In
+    either of these cases, a simple solution is to mandate that the
+    user say, for instance, <code>fluffy spent 0.</code>, but a more
+    robust solution would be to either require a list of roommates or
+    make a new predicate to capture <quote>roommateness.</quote> Let's
+    try that.
   </para>
 
-  <programlisting sh:language="prolog" role="source">roommate(Roomie) :- Roomie spent _.
+  <programlisting role="source">roommate(Roomie) :- Roomie spent _.
 roommate(Roomie) :- Roomie gave _ to _.
 
 expected_contribution(X) :-
@@ -275,7 +241,7 @@ X = 3650.</screen>
     First, let's say we're going to gather up all the expenditures and all the donations and then just forward them on to some other predicate that will reconcile them into a coherent list of what each person has paid.
   </para>
 
-  <programlisting sh:language="prolog" role="source">reconcile(Reconciliation) :-
+  <programlisting role="source">reconcile(Reconciliation) :-
     findall(X spent Amt, total_spent(X, Amt), Expenditures),
     findall(X gave Y to Z, X gave Y to Z, Donations),
     reconcile_all(Donations, Expenditures, Reconciliation).
@@ -289,7 +255,7 @@ X = 3650.</screen>
     amount.
   </para>
 
-  <programlisting sh:language="prolog" role="source">reconcile(Donor gave Amt to Recipient,
+  <programlisting role="source">reconcile(Donor gave Amt to Recipient,
           PreviousExpenditures,
           [Donor spent DonorAfter, Recipient spent RecipientAfter | WithoutEither]) :-
     select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
@@ -324,7 +290,7 @@ X = 3650.</screen>
     <function>reconcile_all/3</function>:
   </para>
 
-  <programlisting sh:language="prolog" role="source">reconcile_all(Donations, Expenditures, Reconciliation) :-
+  <programlisting role="source">reconcile_all(Donations, Expenditures, Reconciliation) :-
     foldl(reconcile, Donations, Expenditures, Reconciliation).
 </programlisting>
 
@@ -349,7 +315,7 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
     opportunities. To make it attractive, let's add some additional
     operators:</para>
 
-<programlisting sh:language="prolog" role="source">:- op(400, xfx, owes).
+<programlisting role="source">:- op(400, xfx, owes).
 :- op(400, xfx, is_owed).
 :- op(400, xfy, gives).
 </programlisting>
@@ -368,7 +334,7 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
         contribution, that roommate is owed the difference.
       </para>
     
-      <programlisting sh:language="prolog" role="source">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
+      <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
     expected_contribution(Baseline),
     Expenditure > Baseline,
     Amount is Expenditure - Baseline,
@@ -382,7 +348,7 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
         contribution, they owe the difference:
       </para>
 
-      <programlisting sh:language="prolog" role="source">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
+      <programlisting role="source">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
     expected_contribution(Baseline),
     Baseline > Expenditure,
     Amount is Baseline - Expenditure,
@@ -399,7 +365,7 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
         this, though we could conceivably use <code>foldl/4</code>.
       </para>
 
-      <programlisting sh:language="prolog" role="source">balances([_ spent Baseline|Roommates], Debts) :-
+      <programlisting role="source">balances([_ spent Baseline|Roommates], Debts) :-
     expected_contribution(Baseline),
     balances(Roommates, Debts).
 </programlisting>
@@ -411,7 +377,7 @@ X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</
         where we're out of people to consider.
       </para>
 
-      <programlisting sh:language="prolog" role="source">balances([], []).
+      <programlisting role="source">balances([], []).
 </programlisting>
     </listitem>
   </orderedlist>
@@ -434,7 +400,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
         no further suggestions are required.
       </para>
 
-      <programlisting sh:language="prolog" role="source">resolution([], []).
+      <programlisting role="source">resolution([], []).
 </programlisting>
     </listitem>
 
@@ -451,7 +417,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	once at the end of each suggestion invocation.
       </para>
       
-    <programlisting sh:language="prolog" role="source">resolution(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
+    <programlisting role="source">resolution(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
     select(Debtor owes Amount, Situation, WithoutDebtor),
     select(Creditor is_owed Amount, WithoutDebtor, WithoutCreditor),
     resolution(WithoutCreditor, Suggestions).
@@ -469,7 +435,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	reinserted with a wly reduced debt.
       </para>
       
-    <programlisting sh:language="prolog" role="source">resolution(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
+    <programlisting role="source">resolution(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
     select(Debtor owes Debt, Situation, WithoutDebtor),
     select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
     Debt > Credit,
@@ -484,7 +450,7 @@ Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].
 	debt is cleared while some part of the credit remains.
       </para>
 
-    <programlisting sh:language="prolog" role="source">resolution(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
+    <programlisting role="source">resolution(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
     select(Debtor owes Debt, Situation, WithoutDebtor),
     select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
     Credit > Debt,
@@ -530,7 +496,7 @@ Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to a
     Let's package it up in a single convenient method:
   </para>
 
-  <programlisting sh:language="prolog" role="source">solve(Solution) :-
+  <programlisting role="source">solve(Solution) :-
     reconcile(Expenditures), 
     balances(Expenditures, Balances), 
     resolution(Balances, Solution).
@@ -613,7 +579,7 @@ false.
     it. But let's anyway, for the thrill of it. We'll start by
     including the <code>dcg/basics</code> library.
   </para>
-  <programlisting sh:language="prolog" role="source">:- use_module(library(dcg/basics)).
+  <programlisting role="source">:- use_module(library(dcg/basics)).
 </programlisting>
 
   <para>
@@ -623,7 +589,7 @@ false.
     for spending and a production for giving.
   </para>
 
-  <programlisting sh:language="prolog" role="source"><![CDATA[document([]) --> [].
+  <programlisting role="source"><![CDATA[document([]) --> [].
 document([Entry|Entries]) --> entry(Entry), blanks, document(Entries).
 
 entry(Entry) --> spent(Entry) ; gave(Entry).
@@ -637,7 +603,7 @@ entry(Entry) --> spent(Entry) ; gave(Entry).
     isn't one.
   </para>
   
-  <programlisting sh:language="prolog" role="source"><![CDATA[
+  <programlisting role="source"><![CDATA[
 spent(Person spent Amount) --> word(Person), whites, "spent", whites, currency(Amount).
 ]]></programlisting>
 
@@ -647,7 +613,7 @@ spent(Person spent Amount) --> word(Person), whites, "spent", whites, currency(A
     <quote>Sally gave Jim 100.</quote>
   </para>
     
-  <programlisting sh:language="prolog" role="source"><![CDATA[
+  <programlisting role="source"><![CDATA[
 gave(Donor gave Amount to Recipient) --> 
     word(Donor), whites, 
     "gave", whites, 
@@ -665,7 +631,7 @@ gave(Donor gave Amount to Recipient) -->
     The following are really simple productions, practically boilerplate
   </para>
 
-  <programlisting sh:language="prolog" role="source"><![CDATA[
+  <programlisting role="source"><![CDATA[
 nl --> "\n".
 
 currency(Amount) --> "$", number(Amount).
@@ -679,7 +645,7 @@ currency(Amount) --> number(Amount).
     Amzi Prolog User's Guide and Reference.</link>
   </para>
 
-  <programlisting sh:language="prolog" role="source"><![CDATA[
+  <programlisting role="source"><![CDATA[
 word(Word) --> { var(Word), ! },
    chars(Chars), { atom_codes(Word, Chars) }.
 word(Word) --> { nonvar(Word) },
@@ -693,7 +659,9 @@ char(X) --> [X], { is_char(X) }.
 is_char(X) :- X >= 0'a, X =< 0'z, !.
 is_char(X) :- X >= 0'A, X =< 0'Z, !.
 is_char(X) :- X >= 0'0, X =< 0'9, !.
-is_char(0'_). ]]></programlisting>
+is_char(0'_).
+]]>
+</programlisting>
 
   <para>
     Now we can make an example file with the same information as the
@@ -717,8 +685,9 @@ X = ['Dexter' gave 2000 to 'Harry', 'Debra' spent 800, 'Harry' spent
     This is great, but we need to get these facts into the database somehow. A simple way is with <code>forall/1</code>:
   </para>
 
-  <programlisting sh:language="prolog" role="source">load_document(Document) :-
-    forall(member(Fact, Document), assertz(Fact)).</programlisting>
+  <programlisting role="source">load_document(Document) :-
+    forall(member(Fact, Document), assertz(Fact)).
+  </programlisting>
   
   <para>
     You may download <link xl:href="shared-expenses.docbook">source
