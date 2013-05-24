@@ -1,9 +1,10 @@
 Dexter gave $2000 to Harry
 
-Debra spent $800
-Harry spent $1900
-Debra spent $1700
-Angel spent $2200
+Dexter spent $5300
+Angel  spent $2700
+Debra  spent $800
+Harry  spent $1900
+Debra  spent $1700
+Angel  spent $2200
 
-Angel gave Debra $3200
-
+Angel  gave $3200 to Debra

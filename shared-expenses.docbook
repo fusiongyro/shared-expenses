@@ -54,6 +54,9 @@
   <programlisting role="source">:- op(400, xfx, spent).
 :- op(400, xfy, gave).
 :- op(300, xfx, to).
+
+:- dynamic (spent)/2.
+:- dynamic (gave)/2.
 </programlisting>
 
   <para>
@@ -79,7 +82,7 @@ true.</programlisting>
     fact, let's bring over the sample database so we can see them:
   </para>
 
-  <programlisting role="source">dexter spent 5300.
+  <programlisting>dexter spent 5300.
 angel spent 2700.
 debra spent 800.
 harry spent 1900.
@@ -142,10 +145,93 @@ Total = 1900.</screen>
     problem.
   </para>
 
+  <sidebar>
+    <title>Modes and Instantiation Patterns</title>
+
+    <para>
+      Sometimes you will see Prolog predicates documented like so:
+    </para>
+
+    <screen>%!  total_spent(?Person:atom, ?Total:number) is nondet.</screen>
+
+    <para>
+      This is <link
+      xl:href="http://www.swi-prolog.org/pldoc/doc_for?object=section%282,%275%27,swi%28%27/doc/packages/pldoc.html%27%29%29">PlDoc
+      markup</link>. The objective with this markup is to convey what
+      inputs and outputs are sensible, how many solutions you're
+      likely to get, and which variable/ground term arrangements can
+      be used.
+    </para>
+
+    <para>
+      In the example, each argument is adorned with a <code>?</code>
+      which indicates that it can be a ground term or a variable, it
+      doesn't matter which. This means all of the following
+      invocations are reasonable:
+    </para>
+
+    <screen>total_spent(Person, Amount).
+total_spent(angel, Amount).
+total_spent(Person, 1000).
+total_spent(angel, 4900).</screen>
+
+    <para>
+      The <code>?</code> could also be a <code>+</code> or
+      <code>-</code>, to indicate that the argument must be supplied
+      (i.e. a ground term) or must be a variable (non-ground term)
+      respectively. This is called the <emphasis>instantiation
+      pattern</emphasis>.
+    </para>
+
+    <para>
+      The <code>is nondet</code> part of the predicate documentation
+      indicates how many solutions there will be, called the
+      <quote>determinism</quote> of the predicate. In this case, the
+      answer depends on which arguments are instantiated. If either
+      the first or the second argument is a ground term, it will
+      either fail or succeed once; for instance,
+      <code>total_spent(angel, Amount)</code> will succeed unifying
+      <code>Amount</code> with 4900 because Angel spent $4900. On the
+      other hand, <code>total_spent(Person, 1000)</code> will fail
+      because nobody spent exactly 1000; if we had specified 1900 it
+      would have succeeded, unifying <code>Person</code> with
+      <code>harry</code>. If both arguments are variables, we get a
+      <quote>generator,</quote> meaning many solutions, which would
+      have the determinism type of <code>nondet</code> or
+      <code>multi</code> depending on whether one result is
+      guaranteed. Finally, <code>semidet</code> specifies that the
+      predicate will either succeed once or fail, and
+      <code>failure</code> specifies that it will always fail.
+    </para>
+
+    <para>
+      In practice, most of the time predicates will be
+      <code>det</code>, <code>semidet</code> or <code>nondet</code>,
+      reflecting the reality that most of the time there is one
+      solution (the predicate is basically a function) or we don't
+      know how many solutions there will be ahead of time.
+    </para>
+
+    <para>
+      We could be more explicit with our documentation by specifying:
+    </para>
+
+    <screen>%!  total_spent(+Person:atom, +Total:number) is semidet.
+%!  total_spent(+Person:atom, -Total:number) is semidet.    
+%!  total_spent(-Person:atom, +Total:number) is semidet.
+%!  total_spent(-Person:atom, -Total:number) is nondet.</screen>
+
+    <para>
+      These documentation comments are extremely handy when learning a
+      new Prolog API, but we won't spend too much time worrying about
+      them in this program.
+    </para>
+  </sidebar>
+
   <para>
     We can now calculate the total outlay on top of
     <function>total_spent/2</function> or on top of the raw
-    <function>spent/2</function>> facts; either way, it doesn't affect the
+    <function>spent/2</function> facts; either way, it doesn't affect the
     outcome, just the amount of work that goes into producing it.
   </para>
 
@@ -220,7 +306,6 @@ X = 3650.</screen>
     raw data cannot. (This is standard operating procedure in a
     forward-chaining reasoner like CLIPS, but that's a topic for
     another day).
-    last.
   </para>
 
   <para>
@@ -231,7 +316,7 @@ X = 3650.</screen>
     to a process that displays the outcome. This strikes me as a
     cleaner approach, even though it necessitates using a list as a
     map (since Prolog doesn't really have a map datastructure). We'll
-    gloss over this inefficiency for now.
+    gloss over this inefficiency.
   </para>
 
   <para>
@@ -695,12 +780,29 @@ X = ['Dexter' gave 2000 to 'Harry', 'Debra' spent 800, 'Harry' spent
   <programlisting role="source">load_document(Document) :-
     forall(member(Fact, Document), assertz(Fact)).
   </programlisting>
+
+  <para>
+    Now let's make a simple main function so we can call this from a script:
+  </para>
+
+  <programlisting role="source">
+main :-
+  optparse:opt_arguments([], _, [File]),
+  once(process_file(File)).
+
+process_file(File) :-
+  phrase_from_file(document(Document), File),
+  load_document(Document),
+  solve(Solution),
+  write(Solution), nl.</programlisting>
   
   <para>
     You may download <link xl:href="shared-expenses.docbook">source
     code for this article</link>
     or <link xl:href="shared-expenses.pl">generated Prolog source
     code</link>. There is also <link xl:href="shared-expenses.pdf">a
-    hardly-customized PDF version</link>.
+    hardly-customized PDF version</link>. The <link
+    xl:href="shared-expenses.txt">sample input file</link> and <link
+    xl:href="shared-expenses">executable wrapper</link> are also available.
   </para>
 </article>
