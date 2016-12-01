@@ -1,0 +1,794 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Shared Expenses, a Prolog Solver</title><link rel="stylesheet" type="text/css" href="dkl.css"/><meta name="generator" content="DocBook XSL Stylesheets V1.79.1"/><script type="text/javascript" src="shjs-0.6/sh_main.min.js"> </script><script type="text/javascript" src="shjs-0.6/lang/sh_prolog.js"> </script><link type="text/css" rel="stylesheet" href="shjs-0.6/css/sh_the.css"/><meta charset="utf-8"/></head><body onload="sh_highlightDocument();"><section class="article" id="idp140626025277064"><div class="titlepage"><div><div><h2 class="title">Shared Expenses, a Prolog Solver</h2></div></div><hr/></div>
+  
+
+  <p>
+    In a shared living situation, it can be hard to keep track of
+    living expenses. A major complicating factor is that one roommate
+    may reimburse another for some expense, and that money has to be
+    taken into account.
+  </p>
+  
+  <p>
+    I saw <a class="ulink" href="http://lpenz.github.com/articles/hedsl-sharedexpenses/index.html" target="_top">an
+    article about this problem</a> a while back. The novelty of
+    this solution is that rather than everybody throwing their money
+    into a single big pot, the roommates who have debt pay the
+    roommates with credit.
+  </p>
+
+  <p>
+    Let’s take the simplest interesting case. There are two roommates,
+    Alice and Bob. They each spend $500 on rent. Alice then pays the
+    electric bill for $200. The total outlay for this month is $1000 +
+    $200 = $1200. Alice has spent $700, Bob has spent $500. To make it
+    fair, Bob has to pay Alice $100. After that transaction, Alice’s
+    outlay is $600 and Bob’s is $600, and everything is fair.
+  </p>
+
+  <p>
+    Working through this example suggests a procedure. We calculate
+    the total amount everybody spent, then the expected contribution,
+    then the difference for each roommate from the amount they spent
+    and their expected contribution. The reconciliation process is
+    simply matching up creditors with debtors. One senses that this
+    process is probably fixed-point (assuming we can take arbitrary
+    fractions of a dollar) since every credit must be matched by an
+    equal amount of debt somewhere else.
+  </p>
+
+  <p>
+    For some reason, this problem screams Prolog to me. Let’s walk
+    through a Prolog solution.
+  </p>
+
+  <p>
+    As a first step, let’s define some operators so we can make this
+    into a <abbr class="acronym">DSL</abbr> or domain-specific language
+  </p>
+
+  <pre class="programlisting sh_prolog">:- op(400, xfx, spent).
+:- op(400, xfy, gave).
+:- op(300, xfx, to).
+
+:- dynamic (spent)/2.
+:- dynamic (gave)/2.
+</pre>
+
+  <p>
+    By supplying these definitions, Prolog can now be used to
+    represent the data directly:
+</p>
+
+  <pre class="programlisting sh_prolog">?- X = dexter spent 5300.
+true.
+
+?- X = dexter gave 2000 to harry.
+true.</pre>
+
+  <p>
+    Note that Prolog isn’t assigning any <span class="emphasis"><em>meaning</em></span>
+    to this information. It’s no different from saying
+    <code class="code">spent(dexter, 5300)</code> or <code class="code">gave(dexter, to(2000,
+    harry))</code>. The second example there looks a little bad, but
+    since we’re only ever going to use the <span class="quote">“<span class="quote">transitive</span>”</span>
+    version, and we’ll be pattern matching with it, it really doesn’t
+    matter which values are in which positions in the actual
+    intermediate representation. We’re concerned about aesthetics. In
+    fact, let’s bring over the sample database so we can see them:
+  </p>
+
+  <pre class="programlisting sh_prolog">dexter spent 5300.
+angel spent 2700.
+debra spent 800.
+harry spent 1900.
+debra spent 1700.
+angel spent 2200.
+
+dexter gave 2000 to harry.
+angel gave 3200 to debra.
+</pre>
+
+  <p>
+    This is somewhat more attractive than the Haskell version, despite
+    conveying the same information from within the syntactic
+    constraints of the language. Let’s build on this by figuring out
+    what everybody’s personal expenditures are, not taking into
+    account <span class="quote">“<span class="quote">gifts</span>”</span>. Let’s just sum up the amount spent
+    per person.
+  </p>
+
+  <pre class="programlisting sh_prolog">total_spent(Person, Total) :-
+    bagof(Amount, Person spent Amount, Receipts),
+    sum(Receipts, Total).
+</pre>
+
+  <p>Unfortunately, the predicate <code class="function">total_spent/2</code> references <code class="function">sum/2</code>, which isn’t in the standard library, but should be. We can add our own implementation:</p>
+
+  <pre class="programlisting sh_prolog">sum(List, Total) :- sum(List, 0, Total).
+
+sum([], Total, Total).
+sum([X|Xs], Acc, Total) :- Acc1 is Acc + X, sum(Xs, Acc1, Total).
+</pre>
+
+  <p>
+    We can now see that <code class="function">total_spent/2</code> is going to
+    generate all the people and the total they’ve spent:
+  </p>
+
+  <pre class="screen">?- total_spent(Person, Total).
+Person = angel,
+Total = 4900 ;
+
+Person = debra,
+Total = 2500 ;
+
+Person = dexter,
+Total = 5300 ;
+
+Person = harry,
+Total = 1900.</pre>
+
+  <p>
+    One major difference between Prolog and other programming
+    languages is that predicates can be <span class="quote">“<span class="quote">driven</span>”</span> in
+    different ways. Different arguments can serve as input or output
+    depending on the circumstances. The above predicate is written
+    generally enough that it can actually generate the people as well
+    as their totals. It’s desirable that predicates have this
+    universality as much as possible. The more ways the predicate can
+    be called, the freer we are in applying Prolog’s power to our
+    problem.
+  </p>
+
+  <div class="sidebar"><div class="titlepage"><div><div><p class="title"><strong>Modes and Instantiation Patterns</strong></p></div></div></div>
+    
+
+    <p>
+      Sometimes you will see Prolog predicates documented like so:
+    </p>
+
+    <pre class="screen">%!  total_spent(?Person:atom, ?Total:number) is nondet.</pre>
+
+    <p>
+      This is <a class="ulink" href="http://www.swi-prolog.org/pldoc/doc_for?object=section%282,%275%27,swi%28%27/doc/packages/pldoc.html%27%29%29" target="_top">PlDoc
+      markup</a>. The objective with this markup is to convey what
+      inputs and outputs are sensible, how many solutions you’re
+      likely to get, and which variable/ground term arrangements can
+      be used.
+    </p>
+
+    <p>
+      In the example, each argument is adorned with a <code class="code">?</code>
+      which indicates that it can be a ground term or a variable, it
+      doesn’t matter which. This means all of the following
+      invocations are reasonable:
+    </p>
+
+    <pre class="screen">total_spent(Person, Amount).
+total_spent(angel, Amount).
+total_spent(Person, 1000).
+total_spent(angel, 4900).</pre>
+
+    <p>
+      The <code class="code">?</code> could also be a <code class="code">+</code> or
+      <code class="code">-</code>, to indicate that the argument must be supplied
+      (i.e. a ground term) or must be a variable (non-ground term)
+      respectively. This is called the <span class="emphasis"><em>instantiation
+      pattern</em></span>.
+    </p>
+
+    <p>
+      The <code class="code">is nondet</code> part of the predicate documentation
+      indicates how many solutions there will be, called the
+      <span class="quote">“<span class="quote">determinism</span>”</span> of the predicate. In this case, the
+      answer depends on which arguments are instantiated. If either
+      the first or the second argument is a ground term, it will
+      either fail or succeed once; for instance,
+      <code class="code">total_spent(angel, Amount)</code> will succeed unifying
+      <code class="code">Amount</code> with 4900 because Angel spent $4900. On the
+      other hand, <code class="code">total_spent(Person, 1000)</code> will fail
+      because nobody spent exactly 1000; if we had specified 1900 it
+      would have succeeded, unifying <code class="code">Person</code> with
+      <code class="code">harry</code>. If both arguments are variables, we get a
+      <span class="quote">“<span class="quote">generator,</span>”</span> meaning many solutions, which would
+      have the determinism type of <code class="code">nondet</code> or
+      <code class="code">multi</code> depending on whether one result is
+      guaranteed. Finally, <code class="code">semidet</code> specifies that the
+      predicate will either succeed once or fail, and
+      <code class="code">failure</code> specifies that it will always fail.
+    </p>
+
+    <p>
+      In practice, most of the time predicates will be
+      <code class="code">det</code>, <code class="code">semidet</code> or <code class="code">nondet</code>,
+      reflecting the reality that most of the time there is one
+      solution (the predicate is basically a function) or we don’t
+      know how many solutions there will be ahead of time.
+    </p>
+
+    <p>
+      We could be more explicit with our documentation by specifying:
+    </p>
+
+    <pre class="screen">%!  total_spent(+Person:atom, +Total:number) is semidet.
+%!  total_spent(+Person:atom, -Total:number) is semidet.    
+%!  total_spent(-Person:atom, +Total:number) is semidet.
+%!  total_spent(-Person:atom, -Total:number) is nondet.</pre>
+
+    <p>
+      These documentation comments are extremely handy when learning a
+      new Prolog API, but we won’t spend too much time worrying about
+      them in this program.
+    </p>
+  </div>
+
+  <p>
+    We can now calculate the total outlay on top of
+    <code class="function">total_spent/2</code> or on top of the raw
+    <code class="function">spent/2</code> facts; either way, it doesn’t affect the
+    outcome, just the amount of work that goes into producing it.
+  </p>
+
+  <pre class="programlisting sh_prolog">total_cost(Total) :-
+    findall(Amount, _ spent Amount, Expenditures),
+    sum(Expenditures, Total).
+</pre>
+
+  <pre class="screen">?- total_cost(X).
+X = 14600.</pre>
+
+  <p>
+    We can now calculate the per-person expected contribution by
+    dividing the total outlay by the number of people:
+  </p>
+
+  <pre class="programlisting sh_prolog">expected_contribution(X) :-
+    total_cost(Total),
+    setof(Person, A^(Person spent A), People),
+    length(People, RoommateCount),
+    X is Total / RoommateCount.
+</pre>
+
+  <p>
+    I find it desirable for Prolog to suggest a natural English
+    reading. Sometimes the logical reading doesn’t match particularly
+    closely, because the natural language is insufficiently
+    precise. The first line and the last two lines are quite sensible
+    here. The second line, however, is a little more complex. I’m
+    using the expenditures in the database to furnish me with a list
+    of roommates. This isn’t especially robust, since we could have a
+    roommate that only gifts other roommates and doesn’t actually
+    spend anything himself (I think we’ve all met the type). We could
+    even have unpaying roommates, like Fluffy, and we might want to
+    calculate her share as a punitive measure against her owner. In
+    either of these cases, a simple solution is to mandate that the
+    user say, for instance, <code class="code">fluffy spent 0.</code>, but a more
+    robust solution would be to either require a list of roommates or
+    make a new predicate to capture <span class="quote">“<span class="quote">roommateness.</span>”</span> Let’s
+    try that.
+  </p>
+
+  <pre class="programlisting sh_prolog">roommate(Roomie) :- Roomie spent _.
+roommate(Roomie) :- Roomie gave _ to _.
+
+expected_contribution(X) :-
+    total_cost(Total),
+    setof(Person, roommate(Person), People),
+    length(People, RoommateCount),
+    X is Total / RoommateCount.
+</pre>
+
+  <pre class="screen">?- expected_contribution(X).
+X = 3650.</pre>
+
+  <p>
+    So, we’ve already calculated what everybody should have
+    contributed and what everybody has already spent. Now we simply
+    need to account for individual donations and then we can output
+    who should pay what to whom.
+  </p>
+
+  <p>
+    There are two ways forward from here. Let’s examine them both. The
+    first one is to use the database to store what we calculate. We
+    could <code class="code">assertz(owes(Person, ExpectedContribution))</code> and
+    then have one process to update that value, first with what
+    they’ve spent, then with the result of applying their donations. A
+    part of me balks at this because it means storing intermediate
+    results in the fact database, which is not susceptible to
+    backtracking and can therefore introduce errors in a way that our
+    raw data cannot. (This is standard operating procedure in a
+    forward-chaining reasoner like CLIPS, but that’s a topic for
+    another day).
+  </p>
+
+  <p>
+    A more classically Prolog approach would be to have a resolution
+    process that pulls all the relevant data from the database and
+    passes it along in lists recursively until all the outstanding
+    transactions have been handled, and then forwards its final state
+    to a process that displays the outcome. This strikes me as a
+    cleaner approach, even though it necessitates using a list as a
+    map (since Prolog doesn’t really have a map datastructure). We’ll
+    gloss over this inefficiency.
+  </p>
+
+  <p>
+    Odds are good if you’re new to Prolog and come from a procedural
+    background, the first solution will sound better to you. If you
+    come from a functional background the second solution will
+    probably sound better to you. It would be interesting to know which
+    one you like better after you see them both, but I’m just going to
+    show the Prolog style.
+  </p>
+
+  <p>
+    First, let’s say we’re going to gather up all the expenditures and all the donations and then just forward them on to some other predicate that will reconcile them into a coherent list of what each person has paid.
+  </p>
+
+  <pre class="programlisting sh_prolog">reconcile(Reconciliation) :-
+    findall(X spent Amt, total_spent(X, Amt), Expenditures),
+    findall(X gave Y to Z, X gave Y to Z, Donations),
+    reconcile_all(Donations, Expenditures, Reconciliation).
+</pre>
+
+  <p>
+    Let’s jump to the interesting part and handle what to do with a
+    single donation. Intuitively, what we want to do is get the
+    donation. Whoever did the giving, this decreases their debt, and
+    whoever did the receiving, this increases theirs by the same
+    amount.
+  </p>
+
+  <pre class="programlisting sh_prolog">reconcile(Donor gave Amt to Recipient,
+          PreviousExpenditures,
+          [Donor spent DonorAfter, Recipient spent RecipientAfter | WithoutEither]) :-
+    select(Donor spent DonorBefore, PreviousExpenditures, WithoutDonor),
+    select(Recipient spent RecipientBefore, WithoutDonor, WithoutEither),
+    DonorAfter is DonorBefore + Amt,
+    RecipientAfter is RecipientBefore - Amt.
+</pre>
+
+  <p>
+    The only thing that makes this confusing is our use of
+    <code class="function">select/3</code>. I mentioned briefly that we would
+    run into a situation using this approach where we needed to use a
+    list as a map. What <code class="function">select/3</code>&gt; does is remove
+    an item from a list and give you back the list without that
+    item. So in the preceding code, we used
+    <code class="function">select/3</code>&gt; twice, once to remove the donor and
+    once to remove the recipient. By using a chain from
+    <code class="code">PreviousExpenditures</code> through
+    <code class="code">WithoutDonor</code> to <code class="code">WithoutEither</code>, we’ve
+    threaded the state of the map through this rule. And then, like
+    many Prolog rules, the work done in the body is synthesized into
+    an out param; we prepend the new Donor and Recipient values onto
+    the <code class="code">WithoutEither</code> list, effectively updating the
+    values for <code class="code">Donor</code> and <code class="code">Recipient</code> in the
+    state variable.
+  </p>
+
+  <p>
+    This now looks like a perfect candidate for a fold, so let’s go
+    ahead and import the <code class="code">apply</code> library for SWI-Prolog and
+    use <code class="function">foldl/4</code> to build
+    <code class="function">reconcile_all/3</code>:
+  </p>
+
+  <pre class="programlisting sh_prolog">reconcile_all(Donations, Expenditures, Reconciliation) :-
+    foldl(reconcile, Donations, Expenditures, Reconciliation).
+</pre>
+
+  <p>
+    If we run what we have so far, we’ll get exactly where everybody
+    stands in terms of what they’ve spent:
+  </p>
+
+  <pre class="screen">?- reconcile(X).
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100].</pre>
+
+  <p>
+    There are two problems with these numbers. First, they do not yet
+    include expected contributions, and two, some are negative. But,
+    using this and the expected contribution from above, we can
+    convert this into a list of who owes and who is owed. Then all the
+    numbers will be positive, and their role will be determined by
+    whether they are a debt or a credit rather than by their sign.
+    This goes against what would be considered proper design in a
+    procedural or object-oriented system, but it will actually be a
+    benefit in Prolog because it will create pattern matching
+    opportunities that would not exist with just a bare number. To
+    make it attractive, let’s add some additional operators:
+  </p>
+
+<pre class="programlisting sh_prolog">:- op(400, xfx, owes).
+:- op(400, xfx, is_owed).
+:- op(400, xfy, gives).
+</pre>
+  
+  <p>
+    Now we can write a predicate to take the raw list of where people
+    stand and compute people’s credit/debt status. I call this process
+    <code class="function">balances/2</code>. To do this, we have to consider
+    three cases.
+  </p>
+
+  <div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+      <p>
+        In the case where the person spent more than the expected
+        contribution, that roommate is owed the difference.
+      </p>
+    
+      <pre class="programlisting sh_prolog">balances([Roommate spent Expenditure|Roommates], [Roommate is_owed Amount|Debts]) :-
+    expected_contribution(Baseline),
+    Expenditure &gt; Baseline,
+    Amount is Expenditure - Baseline,
+    balances(Roommates, Debts).
+</pre>
+    </li><li class="listitem">
+      <p>
+        In the case where the person spent less than the expected
+        contribution, they owe the difference:
+      </p>
+
+      <pre class="programlisting sh_prolog">balances([Roommate spent Expenditure|Roommates], [Roommate owes Amount|Debts]) :-
+    expected_contribution(Baseline),
+    Baseline &gt; Expenditure,
+    Amount is Baseline - Expenditure,
+    balances(Roommates, Debts).
+</pre>
+    </li><li class="listitem">
+      <p>
+        In the case where the person spent exactly the expected
+        contribution, they can be omitted from further discussion;
+        they are <span class="quote">“<span class="quote">square</span>”</span> as it were. This one detail
+        prevents us from using a <code class="code">maplist/3</code> to deal with
+        this, though we could conceivably use <code class="code">foldl/4</code>.
+      </p>
+
+      <pre class="programlisting sh_prolog">balances([_ spent Baseline|Roommates], Debts) :-
+    expected_contribution(Baseline),
+    balances(Roommates, Debts).
+</pre>
+    </li><li class="listitem">
+      <p>
+        And of course we need a base case for our recursion, the case
+        where we’re out of people to consider.
+      </p>
+
+      <pre class="programlisting sh_prolog">balances([], []).
+</pre>
+    </li></ol></div>
+
+  <p>At this point, we can now take a look at what the final balances are:</p>
+
+  <pre class="screen">?- reconcile(X), balances(X, Y).
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
+Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750].</pre>
+
+  <p>
+    This looks pretty good! Let’s figure out the suggestions
+    for complete reconciliation.
+  </p>
+
+  <div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+      <p>
+        First we have the base case: when there are no discrepancies,
+        no further suggestions are required.
+      </p>
+
+      <pre class="programlisting sh_prolog">resolution([], []).
+</pre>
+    </li><li class="listitem">
+      <p>
+        The next case is a special one, where one person owes exactly
+        what another person is owed. In that case, we generate the
+        expected suggestion and then recur, having dealt with both
+        roommates.
+      </p>
+
+      <p>
+	Intuitively, it seems likely that this case will be triggered
+	once at the end of each suggestion invocation.
+      </p>
+      
+    <pre class="programlisting sh_prolog">resolution(Situation, [Debtor gives Amount to Creditor|Suggestions]) :-
+    select(Debtor owes Amount, Situation, WithoutDebtor),
+    select(Creditor is_owed Amount, WithoutDebtor, WithoutCreditor),
+    resolution(WithoutCreditor, Suggestions).
+</pre>
+    </li><li class="listitem">
+      <p>
+	This case and the following have a similar structure. In both
+	cases, we peel off somebody who owes and somebody who is owed
+	money. Then we examine the debt and the credit and see which
+	is greater. If the debt is greater, the credit will be cleared
+	but the some part of the debt will remain, so the creditor
+	will be removed from the situation list but the debtor will be
+	reinserted with a wly reduced debt.
+      </p>
+      
+    <pre class="programlisting sh_prolog">resolution(Situation, [Debtor gives Credit to Creditor|Suggestions]) :-
+    select(Debtor owes Debt, Situation, WithoutDebtor),
+    select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+    Debt &gt; Credit,
+    NewDebt is Debt - Credit,
+    resolution([Debtor owes NewDebt|WithoutCreditor], Suggestions).
+</pre>
+    </li><li class="listitem">
+      <p>
+	This is the opposite case, where the credit is greater, so the
+	debt is cleared while some part of the credit remains.
+      </p>
+
+    <pre class="programlisting sh_prolog">resolution(Situation, [Debtor gives Debt to Creditor|Suggestions]) :-
+    select(Debtor owes Debt, Situation, WithoutDebtor),
+    select(Creditor is_owed Credit, WithoutDebtor, WithoutCreditor),
+    Credit &gt; Debt,
+    NewCredit is Credit - Debt,
+    resolution([Creditor is_owed NewCredit|WithoutCreditor], Suggestions).
+</pre>
+    </li></ol></div>
+
+  <p>
+    The first version of the code is now basically complete. You
+    can run it like so:
+  </p>
+
+  <pre class="screen">?- reconcile(X), balances(X, Y), resolution(Y, Z), write(Z), nl.
+[debra gives 3650 to dexter,debra gives 700 to angel,harry gives 3750 to angel]
+X = [angel spent 8100, debra spent -700, dexter spent 7300, harry spent -100],
+Y = [angel is_owed 4450, debra owes 4350, dexter is_owed 3650, harry owes 3750],
+Z = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to angel] ;
+</pre>
+
+  <p>
+    You’ll notice now that you can get several solutions. This is an
+    automatic result of using Prolog to solve this problem. All of the
+    solutions are equivalent, in the sense that everybody with debt
+    pays up to somebody and everybody with a credit is reimbursed. In
+    fact several of the solutions are simply the same instructions
+    reordered. This is normal and not undesirable.
+  </p>
+
+  <p>
+    Another thing to note is that we have arrived at a reasonably
+    efficient solution (at least, for the case sizes we’re likely to
+    actually address) without using any cuts. This is also
+    desirable. The cut interferes with Prolog’s reasoning system. It’s
+    much better to use logic to constraint Prolog’s behavior, and only
+    use green cuts to help Prolog avoid unnecessary computations that
+    are guaranteed to fail, without altering its behavior in any
+    observable way.
+  </p>
+
+  <p>
+    Let’s package it up in a single convenient method:
+  </p>
+
+  <pre class="programlisting sh_prolog">solve(Solution) :-
+    reconcile(Expenditures), 
+    balances(Expenditures, Balances), 
+    resolution(Balances, Solution).
+</pre>
+
+  <p>
+    And in action, we see it still works:
+  </p>
+
+  <pre class="screen">?- solve(Solution).
+Solution = [debra gives 3650 to dexter, debra gives 700 to angel, harry gives 3750 to angel] ;
+Solution = [debra gives 3650 to dexter, harry gives 3750 to angel, debra gives 700 to angel] ;
+Solution = [harry gives 3650 to dexter, harry gives 100 to angel, debra gives 4350 to angel] ;
+Solution = [harry gives 3650 to dexter, debra gives 4350 to angel, harry gives 100 to angel] ;
+Solution = [debra gives 4350 to angel, harry gives 100 to angel, harry gives 3650 to dexter] ;
+Solution = [debra gives 4350 to angel, harry gives 3650 to dexter, harry gives 100 to angel] ;
+Solution = [harry gives 3750 to angel, debra gives 700 to angel, debra gives 3650 to dexter] ;
+Solution = [harry gives 3750 to angel, debra gives 3650 to dexter, debra gives 700 to angel] ;
+false.
+</pre>
+
+  <div class="sidebar"><div class="titlepage"><div><div><p class="title"><strong>A digression on expressiveness and terseness</strong></p></div></div></div>
+    
+    
+    <p>
+      If you read the original blog post, you were probably both
+      impressed and somewhat miffed by the completely obtuse
+      code. This plays nicely into what Paul Graham so memorably
+      implied about Prolog, that a language can be high level, but if
+      it isn’t terse why would it be worth knowing? Is it true that
+      <span class="quote">“<span class="quote">it's all downhill after you write
+      <code class="function">append/3</code></span>”</span>?
+    </p>
+
+    <p>
+      I suppose since you’re here, you have some interest in
+      Prolog. One of the main reasons for this discussion is because I
+      want to instill in you, and perhaps the rest of the world, the
+      idea that terseness is not necessarily the greatest end. Prolog
+      is very seldom terse. But when written well, it is transparent
+      and intuitive in ways that other languages simply never get to
+      be. It can also be horrifyingly obtuse and confusing, and it can
+      take a lot of unlearning to learn, but I contend that it is
+      worth it.
+    </p>
+
+    <p>
+      Looking at the code we just wrote, one way of looking at it is
+      that it does in 20 or 50 lines what Haskell did in 10 or 20. And
+      there’s something to be said about that. But the Haskell code is
+      basically incomprehensible, whereas the Prolog code perfectly
+      reflects what it is that we’re doing, matching up debtors to
+      creditors and transferring money. Where the Haskell code
+      started with a DSL and then went full-bore into Haskell-land,
+      the Prolog code started with a DSL and then continued to use
+      that DSL to code the solution. We wound up with the best of
+      both, and a great deal of what could have made Applescript
+      great: a well-defined representation that recalled the natural
+      language version, and made it easier to reason about what we
+      were up to.
+    </p>
+
+    <p>
+      Is Prolog right for every situation? No, of course not. But I
+      think it’s right for a lot more than it gets given credit
+      for. Maybe these attributes would not make it especially
+      appropriate for programmers, but I do wonder if they might make
+      it more appropriate for non-programmers, who are less fixated on
+      performance and perfection, but could use a more malleable
+      language that more directly represents their interests.
+    </p>
+  </div>
+
+  <p>
+    Whenever input is involved in Prolog, it’s tempting to use a
+    <span class="emphasis"><em>definite clause grammar</em></span> or
+    <abbr class="acronym">DCG</abbr>. In this particular case it almost isn’t
+    worth it, because the Prolog code is so close to what one would
+    want for an input format it’s pretty meaningless to improve on
+    it. But let’s anyway, for the thrill of it. We’ll start by
+    including the <code class="code">dcg/basics</code> library.
+  </p>
+  <pre class="programlisting sh_prolog">:- use_module(library(dcg/basics)).
+</pre>
+
+  <p>
+    We’re going to define a document as one or more entries, where
+    each entry will be so-and-so spent some-such or so-and-so gave
+    some-such to so-and-so. In other words, we’ll have a production
+    for spending and a production for giving.
+  </p>
+
+  <pre class="programlisting sh_prolog">document([]) --&gt; [].
+document([Entry|Entries]) --&gt; entry(Entry), blanks, document(Entries).
+
+entry(Entry) --&gt; spent(Entry) ; gave(Entry).
+</pre>
+
+  <p>
+    Now, spending is pretty straightforward; we’ll just match lines
+    that look like <code class="code">Sally spent $1000</code>. We won’t be
+    expecting a period, just a newline. And we can swallow the dollar
+    sign, should there happen to be one, without worrying if there
+    isn’t one.
+  </p>
+  
+  <pre class="programlisting sh_prolog">
+spent(Person spent Amount) --&gt; word(Person), whites, "spent", whites, currency(Amount).
+</pre>
+
+  <p>
+    Giving isn’t too bad either, but since we have this opportunity,
+    let’s handle both <span class="quote">“<span class="quote">Sally gave 1000 to Jim</span>”</span> and
+    <span class="quote">“<span class="quote">Sally gave Jim 100.</span>”</span>
+  </p>
+    
+  <pre class="programlisting sh_prolog">
+gave(Donor gave Amount to Recipient) --&gt; 
+    word(Donor), whites, 
+    "gave", whites, 
+    currency(Amount), whites, 
+    "to", whites, 
+    word(Recipient).
+gave(Donor gave Amount to Recipient) --&gt; 
+    word(Donor), whites, 
+    "gave", whites, 
+    word(Recipient), whites, 
+    currency(Amount).
+</pre>
+
+  <p>
+    The following are really simple productions, practically boilerplate
+  </p>
+
+  <pre class="programlisting sh_prolog">
+nl --&gt; "\n".
+
+currency(Amount) --&gt; "$", number(Amount).
+currency(Amount) --&gt; number(Amount).
+</pre>
+
+  <p>
+    The <code class="code">word//1</code> and <code class="code">chars//1</code> productions are
+    borrowed from <a class="ulink" href="http://www.amzi.com/manuals/amzi/pro/ref_dcg.htm" target="_top">the
+    Amzi Prolog User's Guide and Reference.</a>
+  </p>
+
+  <pre class="programlisting sh_prolog">
+word(Word) --&gt; { var(Word), ! },
+   chars(Chars), { atom_codes(Word, Chars) }.
+word(Word) --&gt; { nonvar(Word) },
+   { atom_codes(Word, Chars) }, chars(Chars).
+
+chars([X|Y]) --&gt; char(X), chars(Y).
+chars([]) --&gt; [].
+
+char(X) --&gt; [X], { is_char(X) }.
+
+is_char(X) :- X &gt;= 0'a, X =&lt; 0'z, !.
+is_char(X) :- X &gt;= 0'A, X =&lt; 0'Z, !.
+is_char(X) :- X &gt;= 0'0, X =&lt; 0'9, !.
+is_char(0'_).
+
+</pre>
+
+  <p>
+    Now we can make an example file with the same information as the
+    original database. Save this file in
+    <code class="code">shared-expenses.txt</code> and let’s try to parse it:
+  </p>
+
+  <pre class="screen">Dexter gave $2000 to Harry
+
+Dexter spent $5300
+Angel  spent $2700
+Debra  spent $800
+Harry  spent $1900
+Debra  spent $1700
+Angel  spent $2200
+
+Angel  gave $3200 to Debra
+</pre>
+
+  <p>
+    Testing this shows that it is working:
+  </p>
+
+  <pre class="screen">?- phrase_from_file(document(X), 'shared-expenses.txt').
+X = ['Dexter' gave 2000 to 'Harry', 'Debra' spent 800, 'Harry' spent
+1900, 'Debra' spent 1700, 'Angel' spent 2200, 'Angel' gave 3200 to
+'Debra'].
+</pre>
+
+  <p>
+    This is great, but we need to get these facts into the database somehow. A simple way is with <code class="code">forall/1</code>:
+  </p>
+
+  <pre class="programlisting sh_prolog">load_document(Document) :-
+    forall(member(Fact, Document), assertz(Fact)).
+  </pre>
+
+  <p>
+    Now let’s make a simple main function so we can call this from a script:
+  </p>
+
+  <pre class="programlisting sh_prolog">
+main :-
+  optparse:opt_arguments([], _, [File]),
+  once(process_file(File)).
+
+process_file(File) :-
+  phrase_from_file(document(Document), File),
+  load_document(Document),
+  solve(Solution),
+  write(Solution), nl.</pre>
+  
+  <p>
+    You may download <a class="ulink" href="shared-expenses.docbook" target="_top">source
+    code for this article</a>
+    or <a class="ulink" href="shared-expenses.pl" target="_top">generated Prolog source
+    code</a>. There is also <a class="ulink" href="shared-expenses.pdf" target="_top">a
+    hardly-customized PDF version</a>. The <a class="ulink" href="shared-expenses.txt" target="_top">sample input file</a> and <a class="ulink" href="shared-expenses" target="_top">executable wrapper</a> are also available.
+  </p>
+</section></body></html>
